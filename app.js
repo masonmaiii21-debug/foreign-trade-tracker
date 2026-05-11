@@ -83,7 +83,8 @@ const el = {
   nodeNoteTitle: document.querySelector("#nodeNoteTitle"),
   nodeNoteMeta: document.querySelector("#nodeNoteMeta"),
   nodeNoteText: document.querySelector("#nodeNoteText"),
-  nodeReminderDate: document.querySelector("#nodeReminderDate"),
+  nodeReminderMonth: document.querySelector("#nodeReminderMonth"),
+  nodeReminderDay: document.querySelector("#nodeReminderDay"),
   nodeReminderAt: document.querySelector("#nodeReminderAt"),
   clearNodeReminderBtn: document.querySelector("#clearNodeReminderBtn"),
   saveNodeNoteBtn: document.querySelector("#saveNodeNoteBtn"),
@@ -174,6 +175,14 @@ function populateSelects() {
   el.status.innerHTML = STATUSES.map((status) => `<option value="${status}">${status}</option>`).join("");
   el.stage.innerHTML = STAGES.map((stage) => `<option value="${stage}">${stage}</option>`).join("");
   el.statusFilter.innerHTML = `<option value="">全部状态</option>${STATUSES.map((status) => `<option value="${status}">${status}</option>`).join("")}`;
+  el.nodeReminderMonth.innerHTML = `<option value="">选择月份</option>${Array.from({ length: 12 }, (_, index) => {
+    const month = index + 1;
+    return `<option value="${month}">${month}月</option>`;
+  }).join("")}`;
+  el.nodeReminderDay.innerHTML = `<option value="">选择日期</option>${Array.from({ length: 31 }, (_, index) => {
+    const day = index + 1;
+    return `<option value="${day}">${day}日</option>`;
+  }).join("")}`;
 }
 
 function render() {
@@ -318,7 +327,9 @@ function renderNodeEditor(order) {
   el.nodeNoteTitle.textContent = `${stage}节点`;
   el.nodeNoteMeta.textContent = `${stageActivities.length} 条详情 · ${stageIssues.length} 个问题`;
   el.nodeNoteText.value = note.note || "";
-  el.nodeReminderDate.value = toMonthDayValue(note.reminderAt);
+  const monthDay = toMonthDayParts(note.reminderAt);
+  el.nodeReminderMonth.value = monthDay?.month || "";
+  el.nodeReminderDay.value = monthDay?.day || "";
   el.nodeReminderAt.value = toTimeValue(note.reminderAt);
 }
 
@@ -660,7 +671,7 @@ function saveNodeNote() {
   const stage = state.selectedNode || order.stage || "询盘";
   const note = order.stageNotes[stage];
   note.note = el.nodeNoteText.value.trim();
-  note.reminderAt = monthDayTimeToReminderAt(el.nodeReminderDate.value, el.nodeReminderAt.value, note.reminderAt);
+  note.reminderAt = monthDayTimeToReminderAt(el.nodeReminderMonth.value, el.nodeReminderDay.value, el.nodeReminderAt.value, note.reminderAt);
   note.updatedAt = new Date().toISOString();
   touch(order, `更新${stage}节点：${note.note || "修改备注/提醒"}`, stage);
   saveOrders();
@@ -1459,16 +1470,28 @@ function toMonthDayValue(value) {
   return `${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-function monthDayTimeToReminderAt(monthDayValue, timeValue, existingValue = "") {
-  if (!monthDayValue && !timeValue) return "";
+function toMonthDayParts(value) {
+  const reminderAt = normalizeReminderAt(value);
+  if (!reminderAt) return null;
+  const date = new Date(reminderAt);
+  return {
+    month: String(date.getMonth() + 1),
+    day: String(date.getDate())
+  };
+}
+
+function monthDayTimeToReminderAt(monthValue, dayValue, timeValue, existingValue = "") {
+  if (!monthValue && !dayValue && !timeValue) return "";
   const time = timeValue || toTimeValue(existingValue) || "09:00";
-  const parsed = parseMonthDay(monthDayValue) || parseMonthDay(toMonthDayValue(existingValue));
-  if (!parsed) return timeInputToReminderAt(time, existingValue);
+  const existingParts = toMonthDayParts(existingValue);
+  const month = Number(monthValue || existingParts?.month);
+  const day = Number(dayValue || existingParts?.day);
+  if (!month || !day) return timeInputToReminderAt(time, existingValue);
   const [hour, minute] = time.split(":").map(Number);
   let year = new Date().getFullYear();
-  const candidate = new Date(year, parsed.month - 1, parsed.day, hour, minute, 0, 0);
+  const candidate = new Date(year, month - 1, day, hour, minute, 0, 0);
   if (candidate.getTime() <= Date.now()) year += 1;
-  return toDateTimeInput(year, parsed.month, parsed.day, hour, minute);
+  return toDateTimeInput(year, month, day, hour, minute);
 }
 
 function parseMonthDay(value = "") {

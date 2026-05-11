@@ -89,7 +89,8 @@ const el = {
   nodeNoteText: document.querySelector("#nodeNoteText"),
   nodeReminderMonth: document.querySelector("#nodeReminderMonth"),
   nodeReminderDay: document.querySelector("#nodeReminderDay"),
-  nodeReminderAt: document.querySelector("#nodeReminderAt"),
+  nodeReminderHour: document.querySelector("#nodeReminderHour"),
+  nodeReminderMinute: document.querySelector("#nodeReminderMinute"),
   clearNodeReminderBtn: document.querySelector("#clearNodeReminderBtn"),
   saveNodeNoteBtn: document.querySelector("#saveNodeNoteBtn"),
   reminderCount: document.querySelector("#reminderCount"),
@@ -187,6 +188,12 @@ function populateSelects() {
     const day = index + 1;
     return `<option value="${day}">${day}日</option>`;
   }).join("")}`;
+  el.nodeReminderHour.innerHTML = `<option value="">选择小时</option>${Array.from({ length: 24 }, (_, hour) => {
+    const value = String(hour).padStart(2, "0");
+    const label = hour === 0 ? "00点（12点午夜）" : `${value}点`;
+    return `<option value="${value}">${label}</option>`;
+  }).join("")}`;
+  el.nodeReminderMinute.innerHTML = `<option value="">选择分钟</option>${["00", "15", "30", "45"].map((minute) => `<option value="${minute}">${minute}分</option>`).join("")}`;
 }
 
 function render() {
@@ -334,7 +341,9 @@ function renderNodeEditor(order) {
   const monthDay = toMonthDayParts(note.reminderAt);
   el.nodeReminderMonth.value = monthDay?.month || "";
   el.nodeReminderDay.value = monthDay?.day || "";
-  el.nodeReminderAt.value = toTimeValue(note.reminderAt);
+  const timeParts = toTimeParts(note.reminderAt);
+  el.nodeReminderHour.value = timeParts?.hour || "";
+  el.nodeReminderMinute.value = timeParts?.minute || "";
 }
 
 function renderReminders(order) {
@@ -676,7 +685,12 @@ function saveNodeNote() {
   const stage = state.selectedNode || order.stage || "询盘";
   const note = order.stageNotes[stage];
   note.note = el.nodeNoteText.value.trim();
-  note.reminderAt = monthDayTimeToReminderAt(el.nodeReminderMonth.value, el.nodeReminderDay.value, el.nodeReminderAt.value, note.reminderAt);
+  note.reminderAt = monthDayTimeToReminderAt(
+    el.nodeReminderMonth.value,
+    el.nodeReminderDay.value,
+    selectedReminderTime(),
+    note.reminderAt
+  );
   note.updatedAt = new Date().toISOString();
   touch(order, `更新${stage}节点：${note.note || "修改备注/提醒"}`, stage);
   saveOrders();
@@ -1475,6 +1489,20 @@ function toTimeValue(value) {
   const reminderAt = normalizeReminderAt(value);
   if (!reminderAt) return "";
   return reminderAt.slice(11, 16);
+}
+
+function toTimeParts(value) {
+  const time = toTimeValue(value);
+  if (!time) return null;
+  const [hour, minute] = time.split(":");
+  return { hour, minute };
+}
+
+function selectedReminderTime() {
+  if (!el.nodeReminderHour.value && !el.nodeReminderMinute.value) return "";
+  const hour = el.nodeReminderHour.value || "09";
+  const minute = el.nodeReminderMinute.value || "00";
+  return `${hour}:${minute}`;
 }
 
 function toMonthDayValue(value) {

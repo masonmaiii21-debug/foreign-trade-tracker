@@ -104,23 +104,17 @@
             <div class="reminder-list" id="reminderList"></div>
             <details class="cloud-reminder">
               <summary>
-                <span>高级：邮箱后台提醒</span>
+                <span>邮箱后台提醒</span>
                 <small id="cloudReminderStatus">未配置</small>
               </summary>
               <label>
                 接收邮箱
                 <input id="cloudReminderEmail" autocomplete="off" inputmode="email" placeholder="name@example.com" />
               </label>
-              <label>
-                Supabase 函数地址
-                <input id="cloudFunctionUrl" autocomplete="off" placeholder="https://项目.supabase.co/functions/v1/sync-reminders" />
-              </label>
-              <label>
-                Supabase anon key
-                <input id="cloudAnonKey" autocomplete="off" type="password" placeholder="公开 anon key" />
-              </label>
+              <input id="cloudFunctionUrl" type="hidden" />
+              <input id="cloudAnonKey" type="hidden" />
               <div class="cloud-actions">
-                <button class="secondary" id="saveCloudSettingsBtn" type="button">保存设置</button>
+                <button class="secondary" id="saveCloudSettingsBtn" type="button">保存邮箱</button>
                 <button class="primary" id="syncCloudRemindersBtn" type="button">同步邮箱提醒</button>
               </div>
             </details>

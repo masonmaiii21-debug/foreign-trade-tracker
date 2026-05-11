@@ -1,5 +1,9 @@
 const STORAGE_KEY = "foreignTradeTracker.orders.v1";
 const CLOUD_SETTINGS_KEY = "foreignTradeTracker.cloudReminder.v1";
+const CLOUD_REMINDER_BACKEND = {
+  functionUrl: "",
+  anonKey: ""
+};
 
 const STAGES = ["询盘", "报价", "打样", "合同", "生产", "验货", "订舱", "出运", "收款", "售后", "完成"];
 const STATUSES = ["进行中", "待客户", "有风险", "暂停", "已完成"];
@@ -361,10 +365,11 @@ function renderReminders(order) {
 function renderCloudSettings() {
   const settings = loadCloudSettings();
   el.cloudReminderEmail.value = settings.email || "";
-  el.cloudFunctionUrl.value = settings.functionUrl || "";
-  el.cloudAnonKey.value = settings.anonKey || "";
-  const ready = settings.email && settings.functionUrl && settings.anonKey;
-  el.cloudReminderStatus.textContent = ready ? "已配置" : "未配置";
+  el.cloudFunctionUrl.value = settings.functionUrl || CLOUD_REMINDER_BACKEND.functionUrl;
+  el.cloudAnonKey.value = settings.anonKey || CLOUD_REMINDER_BACKEND.anonKey;
+  const backendReady = settings.functionUrl && settings.anonKey;
+  const ready = settings.email && backendReady;
+  el.cloudReminderStatus.textContent = ready ? "已配置" : backendReady ? "待填邮箱" : "后台未配置";
 }
 
 function nodeSummary(order, stage, note, stageIssues, stageActivities) {
@@ -1074,17 +1079,26 @@ function alarmKey(item) {
 
 function loadCloudSettings() {
   try {
-    return JSON.parse(localStorage.getItem(CLOUD_SETTINGS_KEY)) || {};
+    const saved = JSON.parse(localStorage.getItem(CLOUD_SETTINGS_KEY)) || {};
+    return {
+      email: saved.email || "",
+      functionUrl: CLOUD_REMINDER_BACKEND.functionUrl || saved.functionUrl || "",
+      anonKey: CLOUD_REMINDER_BACKEND.anonKey || saved.anonKey || ""
+    };
   } catch {
-    return {};
+    return {
+      functionUrl: CLOUD_REMINDER_BACKEND.functionUrl,
+      anonKey: CLOUD_REMINDER_BACKEND.anonKey
+    };
   }
 }
 
 function saveCloudSettings() {
+  const current = loadCloudSettings();
   const settings = {
     email: el.cloudReminderEmail.value.trim(),
-    functionUrl: el.cloudFunctionUrl.value.trim(),
-    anonKey: el.cloudAnonKey.value.trim()
+    functionUrl: CLOUD_REMINDER_BACKEND.functionUrl || current.functionUrl || el.cloudFunctionUrl.value.trim(),
+    anonKey: CLOUD_REMINDER_BACKEND.anonKey || current.anonKey || el.cloudAnonKey.value.trim()
   };
   if (settings.email && !isValidEmail(settings.email)) {
     window.alert("接收邮箱格式不正确。");
@@ -1098,7 +1112,7 @@ async function syncCloudReminders() {
   saveCloudSettings();
   const settings = loadCloudSettings();
   if (!settings.email || !settings.functionUrl || !settings.anonKey) {
-    window.alert("请先填写接收邮箱、Supabase 函数地址和 anon key。");
+    window.alert("请先填写接收邮箱。后台邮箱提醒还没有完成站点配置。");
     return;
   }
   const reminders = state.orders.flatMap((order) => {

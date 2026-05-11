@@ -231,7 +231,7 @@
                   <input id="contactNote" autocomplete="off" placeholder="例如 张经理 / 订舱联系人" />
                 </label>
                 <label>
-                  区号
+                  国家/地区区号
                   <select id="contactDialCode">
                     <option value="+86">中国 +86</option>
                     <option value="+852">中国香港 +852</option>
@@ -261,7 +261,9 @@
                     <option value="+55">巴西 +55</option>
                     <option value="+52">墨西哥 +52</option>
                     <option value="+27">南非 +27</option>
+                    <option value="custom">其他，自定义区号</option>
                   </select>
+                  <input class="hidden" id="customDialCode" autocomplete="off" inputmode="tel" placeholder="例如 +351" />
                 </label>
                 <label>
                   电话

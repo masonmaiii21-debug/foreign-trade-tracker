@@ -74,6 +74,7 @@ const el = {
   contactRole: document.querySelector("#contactRole"),
   contactNote: document.querySelector("#contactNote"),
   contactDialCode: document.querySelector("#contactDialCode"),
+  customDialCode: document.querySelector("#customDialCode"),
   contactPhone: document.querySelector("#contactPhone"),
   contactEmail: document.querySelector("#contactEmail"),
   contactCount: document.querySelector("#contactCount"),
@@ -577,7 +578,7 @@ function addContact(event) {
   event.preventDefault();
   const order = selectedOrder();
   if (!order) return;
-  const dialCode = el.contactDialCode.value.trim();
+  const dialCode = selectedDialCode();
   const phone = el.contactPhone.value.trim();
   const email = el.contactEmail.value.trim();
   const name = el.contactNote.value.trim();
@@ -614,6 +615,18 @@ function addContact(event) {
   el.contactEmail.value = "";
   saveOrders();
   render();
+}
+
+function selectedDialCode() {
+  return el.contactDialCode.value === "custom"
+    ? el.customDialCode.value.trim()
+    : el.contactDialCode.value.trim();
+}
+
+function toggleCustomDialCode() {
+  const custom = el.contactDialCode.value === "custom";
+  el.customDialCode.classList.toggle("hidden", !custom);
+  if (custom) el.customDialCode.focus();
 }
 
 function deleteContact(contactId) {
@@ -1487,6 +1500,7 @@ function bindEvents() {
   el.orderForm.addEventListener("submit", saveOrderFromForm);
   el.issueForm.addEventListener("submit", addIssue);
   el.contactForm.addEventListener("submit", addContact);
+  el.contactDialCode.addEventListener("change", toggleCustomDialCode);
   el.saveNodeNoteBtn.addEventListener("click", saveNodeNote);
   el.clearNodeReminderBtn.addEventListener("click", clearNodeReminder);
   el.uploadFileBtn.addEventListener("click", () => el.infoFileInput.click());

@@ -317,7 +317,7 @@ function renderNodeEditor(order) {
   el.nodeNoteTitle.textContent = `${stage}节点`;
   el.nodeNoteMeta.textContent = `${stageActivities.length} 条详情 · ${stageIssues.length} 个问题`;
   el.nodeNoteText.value = note.note || "";
-  el.nodeReminderAt.value = toDateTimeLocalValue(note.reminderAt);
+  el.nodeReminderAt.value = toTimeValue(note.reminderAt);
 }
 
 function renderReminders(order) {
@@ -658,7 +658,7 @@ function saveNodeNote() {
   const stage = state.selectedNode || order.stage || "询盘";
   const note = order.stageNotes[stage];
   note.note = el.nodeNoteText.value.trim();
-  note.reminderAt = normalizeReminderAt(el.nodeReminderAt.value);
+  note.reminderAt = timeInputToReminderAt(el.nodeReminderAt.value, note.reminderAt);
   note.updatedAt = new Date().toISOString();
   touch(order, `更新${stage}节点：${note.note || "修改备注/提醒"}`, stage);
   saveOrders();
@@ -1436,6 +1436,7 @@ function isDueDate(value) {
 
 function normalizeReminderAt(value) {
   if (!value) return "";
+  if (/^\d{2}:\d{2}$/.test(value)) return timeInputToReminderAt(value, "");
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return `${value}T09:00`;
   if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) return value.slice(0, 16);
   const date = new Date(value);
@@ -1443,8 +1444,23 @@ function normalizeReminderAt(value) {
   return toDateTimeInput(date.getFullYear(), date.getMonth() + 1, date.getDate(), date.getHours(), date.getMinutes());
 }
 
-function toDateTimeLocalValue(value) {
-  return normalizeReminderAt(value);
+function toTimeValue(value) {
+  const reminderAt = normalizeReminderAt(value);
+  if (!reminderAt) return "";
+  return reminderAt.slice(11, 16);
+}
+
+function timeInputToReminderAt(timeValue, existingValue = "") {
+  if (!timeValue) return "";
+  const [hour, minute] = timeValue.split(":").map(Number);
+  const existing = normalizeReminderAt(existingValue);
+  const base = existing ? new Date(existing) : new Date();
+  const candidate = new Date(base);
+  candidate.setHours(hour, minute, 0, 0);
+  if (!existing && candidate.getTime() <= Date.now()) {
+    candidate.setDate(candidate.getDate() + 1);
+  }
+  return toDateTimeInput(candidate.getFullYear(), candidate.getMonth() + 1, candidate.getDate(), candidate.getHours(), candidate.getMinutes());
 }
 
 function isDueReminder(value) {

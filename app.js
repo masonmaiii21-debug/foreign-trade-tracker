@@ -83,6 +83,7 @@ const el = {
   nodeNoteTitle: document.querySelector("#nodeNoteTitle"),
   nodeNoteMeta: document.querySelector("#nodeNoteMeta"),
   nodeNoteText: document.querySelector("#nodeNoteText"),
+  nodeReminderDate: document.querySelector("#nodeReminderDate"),
   nodeReminderAt: document.querySelector("#nodeReminderAt"),
   clearNodeReminderBtn: document.querySelector("#clearNodeReminderBtn"),
   saveNodeNoteBtn: document.querySelector("#saveNodeNoteBtn"),
@@ -317,6 +318,7 @@ function renderNodeEditor(order) {
   el.nodeNoteTitle.textContent = `${stage}节点`;
   el.nodeNoteMeta.textContent = `${stageActivities.length} 条详情 · ${stageIssues.length} 个问题`;
   el.nodeNoteText.value = note.note || "";
+  el.nodeReminderDate.value = toMonthDayValue(note.reminderAt);
   el.nodeReminderAt.value = toTimeValue(note.reminderAt);
 }
 
@@ -658,7 +660,7 @@ function saveNodeNote() {
   const stage = state.selectedNode || order.stage || "询盘";
   const note = order.stageNotes[stage];
   note.note = el.nodeNoteText.value.trim();
-  note.reminderAt = timeInputToReminderAt(el.nodeReminderAt.value, note.reminderAt);
+  note.reminderAt = monthDayTimeToReminderAt(el.nodeReminderDate.value, el.nodeReminderAt.value, note.reminderAt);
   note.updatedAt = new Date().toISOString();
   touch(order, `更新${stage}节点：${note.note || "修改备注/提醒"}`, stage);
   saveOrders();
@@ -1448,6 +1450,36 @@ function toTimeValue(value) {
   const reminderAt = normalizeReminderAt(value);
   if (!reminderAt) return "";
   return reminderAt.slice(11, 16);
+}
+
+function toMonthDayValue(value) {
+  const reminderAt = normalizeReminderAt(value);
+  if (!reminderAt) return "";
+  const date = new Date(reminderAt);
+  return `${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function monthDayTimeToReminderAt(monthDayValue, timeValue, existingValue = "") {
+  if (!monthDayValue && !timeValue) return "";
+  const time = timeValue || toTimeValue(existingValue) || "09:00";
+  const parsed = parseMonthDay(monthDayValue) || parseMonthDay(toMonthDayValue(existingValue));
+  if (!parsed) return timeInputToReminderAt(time, existingValue);
+  const [hour, minute] = time.split(":").map(Number);
+  let year = new Date().getFullYear();
+  const candidate = new Date(year, parsed.month - 1, parsed.day, hour, minute, 0, 0);
+  if (candidate.getTime() <= Date.now()) year += 1;
+  return toDateTimeInput(year, parsed.month, parsed.day, hour, minute);
+}
+
+function parseMonthDay(value = "") {
+  const normalized = value.trim();
+  if (!normalized) return null;
+  const match = normalized.match(/^(\d{1,2})(?:月|-|\/|\.)(\d{1,2})日?$/);
+  if (!match) return null;
+  const month = Number(match[1]);
+  const day = Number(match[2]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return { month, day };
 }
 
 function timeInputToReminderAt(timeValue, existingValue = "") {

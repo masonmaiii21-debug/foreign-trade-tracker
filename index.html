@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>外贸跟单记录工具</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">单</div>
+          <div>
+            <h1>外贸跟单</h1>
+            <p>订单进度与问题记录</p>
+          </div>
+        </div>
+
+        <div class="metrics" id="metrics"></div>
+
+        <div class="toolbar">
+          <button class="primary" id="newOrderBtn" type="button">+ 新订单</button>
+          <button class="ghost" id="exportBtn" type="button" title="导出数据">⇩</button>
+          <label class="ghost file-action" title="导入数据">
+            ⇧
+            <input id="importInput" type="file" accept="application/json" />
+          </label>
+        </div>
+
+        <div class="filters">
+          <input id="searchInput" type="search" placeholder="搜索订单号、客户、产品" />
+          <select id="statusFilter">
+            <option value="">全部状态</option>
+          </select>
+        </div>
+
+        <div class="order-list" id="orderList"></div>
+      </aside>
+
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">工作台</p>
+            <h2 id="pageTitle">选择或新建订单</h2>
+          </div>
+          <button class="danger ghost hidden" id="deleteOrderBtn" type="button">删除订单</button>
+        </header>
+
+        <section class="panel empty-state" id="emptyState">
+          <div>
+            <h2>开始记录第一单</h2>
+            <p>把订单号、客户、产品、当前阶段和问题放在同一个地方，后续可通过工作日志批量更新。</p>
+            <button class="primary" id="emptyNewOrderBtn" type="button">新建订单</button>
+          </div>
+        </section>
+
+        <section class="content-grid hidden" id="orderEditor">
+          <section class="panel flow-panel">
+            <div class="section-title">
+              <h3>订单链路</h3>
+              <span>悬浮看详情，点击节点编辑备注和提醒</span>
+            </div>
+            <div class="progress-chain" id="progressChain"></div>
+            <div class="node-editor" id="nodeEditor">
+              <div>
+                <strong id="nodeNoteTitle">节点备注</strong>
+                <p id="nodeNoteMeta"></p>
+              </div>
+              <label>
+                节点备注
+                <textarea id="nodeNoteText" rows="3" placeholder="记录该节点的具体情况、客户要求、供应商反馈等"></textarea>
+              </label>
+              <div class="node-actions">
+                <label>
+                  提醒日期
+                  <input id="nodeReminderDate" type="date" />
+                </label>
+                <button class="secondary" id="clearNodeReminderBtn" type="button">清除提醒</button>
+                <button class="primary" id="saveNodeNoteBtn" type="button">保存节点</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel reminder-panel">
+            <div class="section-title">
+              <h3>提醒</h3>
+              <span id="reminderCount"></span>
+            </div>
+            <div class="reminder-list" id="reminderList"></div>
+          </section>
+
+          <form class="panel order-form" id="orderForm">
+            <div class="section-title">
+              <h3>订单信息</h3>
+              <span id="lastUpdated"></span>
+            </div>
+
+            <div class="form-grid">
+              <label>
+                订单号
+                <input id="orderNo" required autocomplete="off" placeholder="例如 PI-2026-001" />
+              </label>
+              <label>
+                客户
+                <input id="customer" autocomplete="off" placeholder="客户或公司名称" />
+              </label>
+              <label>
+                国家/地区
+                <input id="country" autocomplete="off" placeholder="例如 Germany" />
+              </label>
+              <label>
+                产品
+                <input id="product" autocomplete="off" placeholder="产品名称" />
+              </label>
+              <label>
+                数量
+                <input id="quantity" autocomplete="off" placeholder="例如 2000 pcs" />
+              </label>
+              <label>
+                金额
+                <input id="amount" autocomplete="off" placeholder="例如 USD 12,500" />
+              </label>
+              <label>
+                交期
+                <input id="dueDate" type="date" />
+              </label>
+              <label>
+                状态
+                <select id="status"></select>
+              </label>
+            </div>
+
+            <label>
+              当前进度
+              <select id="stage"></select>
+            </label>
+
+            <label>
+              下一步
+              <input id="nextAction" autocomplete="off" placeholder="例如 等客户确认唛头，5月15日前回复" />
+            </label>
+
+            <label>
+              备注
+              <textarea id="notes" rows="4" placeholder="付款条款、包装要求、客户偏好等"></textarea>
+            </label>
+
+            <div class="form-actions">
+              <button class="primary" type="submit">保存修改</button>
+              <span id="saveHint"></span>
+            </div>
+          </form>
+
+          <section class="panel issue-panel">
+            <div class="section-title">
+              <h3>问题记录</h3>
+              <span id="issueCount"></span>
+            </div>
+
+            <form class="issue-form" id="issueForm">
+              <textarea id="issueText" rows="3" placeholder="记录质量、交期、付款、单证、沟通等问题"></textarea>
+              <div class="issue-controls">
+                <select id="issueSeverity">
+                  <option value="一般">一般</option>
+                  <option value="重要">重要</option>
+                  <option value="紧急">紧急</option>
+                </select>
+                <button class="secondary" type="submit">添加问题</button>
+              </div>
+            </form>
+
+            <div class="issue-list" id="issueList"></div>
+          </section>
+
+          <section class="panel log-panel">
+            <div class="section-title">
+              <h3>工作日志自动更新</h3>
+              <span>识别订单号、阶段、问题、下一步、提醒</span>
+            </div>
+            <textarea id="workLog" rows="8" placeholder="示例：PI-2026-001 今天客户确认打样，发现包装标签尺寸不符，下一步明天发新版唛头给客户确认。"></textarea>
+            <div class="log-actions">
+              <button class="secondary" id="previewLogBtn" type="button">分析日志</button>
+              <button class="primary" id="applyLogBtn" type="button" disabled>应用更新</button>
+            </div>
+            <div class="log-preview" id="logPreview"></div>
+          </section>
+
+          <section class="panel activity-panel">
+            <div class="section-title">
+              <h3>更新记录</h3>
+              <span id="activityCount"></span>
+            </div>
+            <div class="activity-list" id="activityList"></div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <template id="orderItemTemplate">
+      <button class="order-item" type="button">
+        <span class="order-main">
+          <strong></strong>
+          <small></small>
+        </span>
+        <span class="order-meta"></span>
+      </button>
+    </template>
+
+    <template id="issueTemplate">
+      <article class="issue-item">
+        <div>
+          <span class="severity"></span>
+          <p></p>
+          <small></small>
+        </div>
+        <div class="issue-actions">
+          <button class="ghost close-issue" type="button" title="解决/重开">✓</button>
+          <button class="ghost delete-issue" type="button" title="删除问题">×</button>
+        </div>
+      </article>
+    </template>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

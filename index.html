@@ -94,11 +94,11 @@
               <span id="reminderCount"></span>
             </div>
             <div class="reminder-list" id="reminderList"></div>
-            <div class="cloud-reminder">
-              <div class="section-title">
-                <h3>邮箱提醒</h3>
-                <span id="cloudReminderStatus">未配置</span>
-              </div>
+            <details class="cloud-reminder">
+              <summary>
+                <span>高级：邮箱后台提醒</span>
+                <small id="cloudReminderStatus">未配置</small>
+              </summary>
               <label>
                 接收邮箱
                 <input id="cloudReminderEmail" autocomplete="off" inputmode="email" placeholder="name@example.com" />
@@ -115,7 +115,7 @@
                 <button class="secondary" id="saveCloudSettingsBtn" type="button">保存设置</button>
                 <button class="primary" id="syncCloudRemindersBtn" type="button">同步邮箱提醒</button>
               </div>
-            </div>
+            </details>
           </section>
 
           <form class="panel order-form" id="orderForm">

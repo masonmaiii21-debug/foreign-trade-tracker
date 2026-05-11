@@ -1,4 +1,5 @@
 const STORAGE_KEY = "foreignTradeTracker.orders.v1";
+const CLOUD_SETTINGS_KEY = "foreignTradeTracker.cloudReminder.v1";
 
 const STAGES = ["询盘", "报价", "打样", "合同", "生产", "验货", "订舱", "出运", "收款", "售后", "完成"];
 const STATUSES = ["进行中", "待客户", "有风险", "暂停", "已完成"];
@@ -99,7 +100,13 @@ const el = {
   alarmTitle: document.querySelector("#alarmTitle"),
   alarmContent: document.querySelector("#alarmContent"),
   snoozeAlarmBtn: document.querySelector("#snoozeAlarmBtn"),
-  dismissAlarmBtn: document.querySelector("#dismissAlarmBtn")
+  dismissAlarmBtn: document.querySelector("#dismissAlarmBtn"),
+  cloudReminderEmail: document.querySelector("#cloudReminderEmail"),
+  cloudFunctionUrl: document.querySelector("#cloudFunctionUrl"),
+  cloudAnonKey: document.querySelector("#cloudAnonKey"),
+  saveCloudSettingsBtn: document.querySelector("#saveCloudSettingsBtn"),
+  syncCloudRemindersBtn: document.querySelector("#syncCloudRemindersBtn"),
+  cloudReminderStatus: document.querySelector("#cloudReminderStatus")
 };
 
 function createId() {
@@ -171,6 +178,7 @@ function render() {
   renderMetrics();
   renderOrderList();
   renderEditor();
+  renderCloudSettings();
 }
 
 function renderMetrics() {
@@ -334,6 +342,15 @@ function renderReminders(order) {
       </article>
     `;
   }).join("");
+}
+
+function renderCloudSettings() {
+  const settings = loadCloudSettings();
+  el.cloudReminderEmail.value = settings.email || "";
+  el.cloudFunctionUrl.value = settings.functionUrl || "";
+  el.cloudAnonKey.value = settings.anonKey || "";
+  const ready = settings.email && settings.functionUrl && settings.anonKey;
+  el.cloudReminderStatus.textContent = ready ? "已配置" : "未配置";
 }
 
 function nodeSummary(order, stage, note, stageIssues, stageActivities) {
@@ -1029,6 +1046,75 @@ function alarmKey(item) {
   return `alarm:${item.order.id}:${item.stage}:${item.reminderAt}`;
 }
 
+function loadCloudSettings() {
+  try {
+    return JSON.parse(localStorage.getItem(CLOUD_SETTINGS_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveCloudSettings() {
+  const settings = {
+    email: el.cloudReminderEmail.value.trim(),
+    functionUrl: el.cloudFunctionUrl.value.trim(),
+    anonKey: el.cloudAnonKey.value.trim()
+  };
+  if (settings.email && !isValidEmail(settings.email)) {
+    window.alert("接收邮箱格式不正确。");
+    return;
+  }
+  localStorage.setItem(CLOUD_SETTINGS_KEY, JSON.stringify(settings));
+  el.cloudReminderStatus.textContent = settings.email && settings.functionUrl && settings.anonKey ? "已配置" : "未配置";
+}
+
+async function syncCloudReminders() {
+  saveCloudSettings();
+  const settings = loadCloudSettings();
+  if (!settings.email || !settings.functionUrl || !settings.anonKey) {
+    window.alert("请先填写接收邮箱、Supabase 函数地址和 anon key。");
+    return;
+  }
+  const reminders = state.orders.flatMap((order) => {
+    ensureOrderShape(order);
+    return STAGES.map((stage) => {
+      const stageNote = order.stageNotes?.[stage] || {};
+      if (!stageNote.reminderAt) return null;
+      return {
+        client_id: `${order.id}:${stage}:${stageNote.reminderAt}`,
+        recipient_email: settings.email,
+        order_no: order.orderNo || "",
+        customer: order.customer || "",
+        product: order.product || "",
+        stage,
+        reminder_at: new Date(normalizeReminderAt(stageNote.reminderAt)).toISOString(),
+        note: stageNote.note || order.nextAction || "需要跟进"
+      };
+    }).filter(Boolean);
+  });
+  if (!reminders.length) {
+    window.alert("当前没有可同步的提醒。");
+    return;
+  }
+
+  el.cloudReminderStatus.textContent = "同步中";
+  try {
+    const response = await fetch(settings.functionUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${settings.anonKey}`
+      },
+      body: JSON.stringify({ reminders })
+    });
+    if (!response.ok) throw new Error(await response.text());
+    el.cloudReminderStatus.textContent = "已同步";
+  } catch (error) {
+    el.cloudReminderStatus.textContent = "同步失败";
+    window.alert(`同步失败：${error.message}`);
+  }
+}
+
 function requestNotificationPermission() {
   if (!("Notification" in window) || Notification.permission !== "default") return;
   Notification.requestPermission().catch(() => {});
@@ -1413,6 +1499,8 @@ function bindEvents() {
   el.importInput.addEventListener("change", importData);
   el.dismissAlarmBtn.addEventListener("click", dismissAlarm);
   el.snoozeAlarmBtn.addEventListener("click", snoozeAlarm);
+  el.saveCloudSettingsBtn.addEventListener("click", saveCloudSettings);
+  el.syncCloudRemindersBtn.addEventListener("click", syncCloudReminders);
   document.addEventListener("click", requestNotificationPermission, { once: true });
 }
 

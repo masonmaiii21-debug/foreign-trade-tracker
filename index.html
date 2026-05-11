@@ -94,6 +94,28 @@
               <span id="reminderCount"></span>
             </div>
             <div class="reminder-list" id="reminderList"></div>
+            <div class="cloud-reminder">
+              <div class="section-title">
+                <h3>邮箱提醒</h3>
+                <span id="cloudReminderStatus">未配置</span>
+              </div>
+              <label>
+                接收邮箱
+                <input id="cloudReminderEmail" autocomplete="off" inputmode="email" placeholder="name@example.com" />
+              </label>
+              <label>
+                Supabase 函数地址
+                <input id="cloudFunctionUrl" autocomplete="off" placeholder="https://项目.supabase.co/functions/v1/sync-reminders" />
+              </label>
+              <label>
+                Supabase anon key
+                <input id="cloudAnonKey" autocomplete="off" type="password" placeholder="公开 anon key" />
+              </label>
+              <div class="cloud-actions">
+                <button class="secondary" id="saveCloudSettingsBtn" type="button">保存设置</button>
+                <button class="primary" id="syncCloudRemindersBtn" type="button">同步邮箱提醒</button>
+              </div>
+            </div>
           </section>
 
           <form class="panel order-form" id="orderForm">
@@ -210,7 +232,36 @@
                 </label>
                 <label>
                   区号
-                  <input id="contactDialCode" autocomplete="off" inputmode="tel" value="+86" placeholder="+86" />
+                  <select id="contactDialCode">
+                    <option value="+86">中国 +86</option>
+                    <option value="+852">中国香港 +852</option>
+                    <option value="+853">中国澳门 +853</option>
+                    <option value="+886">中国台湾 +886</option>
+                    <option value="+1">美国/加拿大 +1</option>
+                    <option value="+44">英国 +44</option>
+                    <option value="+49">德国 +49</option>
+                    <option value="+33">法国 +33</option>
+                    <option value="+39">意大利 +39</option>
+                    <option value="+34">西班牙 +34</option>
+                    <option value="+31">荷兰 +31</option>
+                    <option value="+61">澳大利亚 +61</option>
+                    <option value="+64">新西兰 +64</option>
+                    <option value="+81">日本 +81</option>
+                    <option value="+82">韩国 +82</option>
+                    <option value="+65">新加坡 +65</option>
+                    <option value="+60">马来西亚 +60</option>
+                    <option value="+66">泰国 +66</option>
+                    <option value="+84">越南 +84</option>
+                    <option value="+62">印尼 +62</option>
+                    <option value="+91">印度 +91</option>
+                    <option value="+971">阿联酋 +971</option>
+                    <option value="+966">沙特 +966</option>
+                    <option value="+90">土耳其 +90</option>
+                    <option value="+7">俄罗斯 +7</option>
+                    <option value="+55">巴西 +55</option>
+                    <option value="+52">墨西哥 +52</option>
+                    <option value="+27">南非 +27</option>
+                  </select>
                 </label>
                 <label>
                   电话

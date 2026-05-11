@@ -619,6 +619,24 @@ label {
   color: var(--primary-dark);
 }
 
+.cloud-reminder {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  margin-top: 16px;
+  padding-top: 16px;
+}
+
+.cloud-reminder label {
+  margin-bottom: 0;
+}
+
+.cloud-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .alarm-overlay {
   position: fixed;
   inset: 0;

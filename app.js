@@ -84,6 +84,8 @@ const el = {
   saveNodeNoteBtn: document.querySelector("#saveNodeNoteBtn"),
   reminderCount: document.querySelector("#reminderCount"),
   reminderList: document.querySelector("#reminderList"),
+  uploadFileBtn: document.querySelector("#uploadFileBtn"),
+  fileReadHint: document.querySelector("#fileReadHint"),
   infoFileInput: document.querySelector("#infoFileInput"),
   workLog: document.querySelector("#workLog"),
   previewLogBtn: document.querySelector("#previewLogBtn"),
@@ -627,11 +629,14 @@ async function readInfoFile(event) {
   const file = event.target.files?.[0];
   if (!file) return;
   try {
+    el.fileReadHint.textContent = `正在读取：${file.name}`;
     const text = await fileToText(file);
     el.workLog.value = text.slice(0, 60000);
     state.pendingUpdates = parseWorkLog(text);
     renderLogPreview();
+    el.fileReadHint.textContent = `已读取：${file.name}`;
   } catch (error) {
+    el.fileReadHint.textContent = "读取失败";
     window.alert(`文件识别失败：${error.message}`);
   } finally {
     event.target.value = "";
@@ -1195,6 +1200,7 @@ function bindEvents() {
   el.contactForm.addEventListener("submit", addContact);
   el.saveNodeNoteBtn.addEventListener("click", saveNodeNote);
   el.clearNodeReminderBtn.addEventListener("click", clearNodeReminder);
+  el.uploadFileBtn.addEventListener("click", () => el.infoFileInput.click());
   el.infoFileInput.addEventListener("change", readInfoFile);
   el.previewLogBtn.addEventListener("click", previewWorkLog);
   el.applyLogBtn.addEventListener("click", applyWorkLog);

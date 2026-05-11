@@ -391,25 +391,25 @@ label {
   margin-bottom: 0;
 }
 
-.upload-zone {
+.upload-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
   border: 1px dashed var(--line);
   border-radius: 8px;
-  padding: 14px;
+  padding: 12px;
+  margin-bottom: 12px;
   background: #fbfdfc;
-  cursor: pointer;
 }
 
-.upload-zone span {
-  color: var(--primary-dark);
+.upload-row input {
+  display: none;
 }
 
-.upload-zone small {
+#fileReadHint {
   color: var(--muted);
-  font-weight: 400;
-}
-
-.upload-zone input {
-  margin-top: 10px;
+  font-size: 13px;
 }
 
 .issue-controls select {

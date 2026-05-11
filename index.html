@@ -228,11 +228,11 @@
               <h3>工作日志/文件自动识别</h3>
               <span>识别订单、货物、联系人、阶段、问题、提醒</span>
             </div>
-            <label class="upload-zone">
-              <span>上传工作日志、订单表或资料文件</span>
-              <small>支持 txt、md、csv、json、xlsx、xls、pdf、docx；文件在浏览器本地解析</small>
+            <div class="upload-row">
+              <button class="secondary" id="uploadFileBtn" type="button">上传文件</button>
+              <span id="fileReadHint">支持 txt、md、csv、json、xlsx、xls、pdf、docx</span>
               <input id="infoFileInput" type="file" accept=".txt,.md,.csv,.json,.xlsx,.xls,.pdf,.docx" />
-            </label>
+            </div>
             <textarea id="workLog" rows="8" placeholder="示例：PI-2026-001 今天客户确认打样，发现包装标签尺寸不符，下一步明天发新版唛头给客户确认。"></textarea>
             <div class="log-actions">
               <button class="secondary" id="previewLogBtn" type="button">分析日志</button>

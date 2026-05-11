@@ -53,6 +53,8 @@ const el = {
   country: document.querySelector("#country"),
   product: document.querySelector("#product"),
   quantity: document.querySelector("#quantity"),
+  weight: document.querySelector("#weight"),
+  category: document.querySelector("#category"),
   amount: document.querySelector("#amount"),
   dueDate: document.querySelector("#dueDate"),
   status: document.querySelector("#status"),
@@ -66,6 +68,13 @@ const el = {
   issueSeverity: document.querySelector("#issueSeverity"),
   issueCount: document.querySelector("#issueCount"),
   issueList: document.querySelector("#issueList"),
+  contactForm: document.querySelector("#contactForm"),
+  contactRole: document.querySelector("#contactRole"),
+  contactNote: document.querySelector("#contactNote"),
+  contactPhone: document.querySelector("#contactPhone"),
+  contactEmail: document.querySelector("#contactEmail"),
+  contactCount: document.querySelector("#contactCount"),
+  contactList: document.querySelector("#contactList"),
   progressChain: document.querySelector("#progressChain"),
   nodeNoteTitle: document.querySelector("#nodeNoteTitle"),
   nodeNoteMeta: document.querySelector("#nodeNoteMeta"),
@@ -75,6 +84,7 @@ const el = {
   saveNodeNoteBtn: document.querySelector("#saveNodeNoteBtn"),
   reminderCount: document.querySelector("#reminderCount"),
   reminderList: document.querySelector("#reminderList"),
+  infoFileInput: document.querySelector("#infoFileInput"),
   workLog: document.querySelector("#workLog"),
   previewLogBtn: document.querySelector("#previewLogBtn"),
   applyLogBtn: document.querySelector("#applyLogBtn"),
@@ -112,7 +122,10 @@ function selectedOrder() {
 
 function ensureOrderShape(order) {
   order.issues = Array.isArray(order.issues) ? order.issues : [];
+  order.contacts = Array.isArray(order.contacts) ? order.contacts : [];
   order.activities = Array.isArray(order.activities) ? order.activities : [];
+  order.weight = order.weight || "";
+  order.category = order.category || "";
   order.stageNotes = order.stageNotes && typeof order.stageNotes === "object" ? order.stageNotes : {};
   STAGES.forEach((stage) => {
     order.stageNotes[stage] = {
@@ -163,7 +176,7 @@ function renderOrderList() {
   const orders = state.orders
     .filter((order) => !status || order.status === status)
     .filter((order) => {
-      const text = [order.orderNo, order.customer, order.product, order.country].join(" ").toLowerCase();
+      const text = [order.orderNo, order.customer, order.product, order.country, order.category].join(" ").toLowerCase();
       return !query || text.includes(query);
     })
     .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
@@ -210,6 +223,8 @@ function renderEditor() {
   el.country.value = order.country || "";
   el.product.value = order.product || "";
   el.quantity.value = order.quantity || "";
+  el.weight.value = order.weight || "";
+  el.category.value = order.category || "";
   el.amount.value = order.amount || "";
   el.dueDate.value = order.dueDate || "";
   el.status.value = order.status || "进行中";
@@ -224,6 +239,7 @@ function renderEditor() {
   renderNodeEditor(order);
   renderReminders(order);
   renderIssues(order);
+  renderContacts(order);
   renderActivities(order);
 }
 
@@ -365,6 +381,36 @@ function renderIssues(order) {
     });
 }
 
+function renderContacts(order) {
+  const contacts = order.contacts || [];
+  el.contactCount.textContent = contacts.length ? `${contacts.length} 个` : "无";
+  el.contactList.innerHTML = "";
+
+  if (!contacts.length) {
+    el.contactList.innerHTML = `<div class="contact-item"><p>暂无联系方式</p></div>`;
+    return;
+  }
+
+  contacts
+    .slice()
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
+    .forEach((contact) => {
+      const article = document.createElement("article");
+      article.className = "contact-item";
+      article.innerHTML = `
+        <div>
+          <strong>${escapeHtml(contact.role || "其他")}${contact.note ? ` · ${escapeHtml(contact.note)}` : ""}</strong>
+          <p>电话：${escapeHtml(contact.phone || "未填")}<br />邮箱：${escapeHtml(contact.email || "未填")}</p>
+        </div>
+        <div class="contact-actions">
+          <button class="ghost" type="button" title="删除联系人">×</button>
+        </div>
+      `;
+      article.querySelector("button").addEventListener("click", () => deleteContact(contact.id));
+      el.contactList.appendChild(article);
+    });
+}
+
 function renderActivities(order) {
   const activities = order.activities || [];
   el.activityCount.textContent = `${activities.length} 条`;
@@ -386,6 +432,8 @@ function addOrder() {
     country: "",
     product: "",
     quantity: "",
+    weight: "",
+    category: "",
     amount: "",
     dueDate: "",
     status: "进行中",
@@ -393,6 +441,7 @@ function addOrder() {
     nextAction: "",
     notes: "",
     issues: [],
+    contacts: [],
     stageNotes: createEmptyStageNotes(),
     activities: [{ id: createId(), text: "新建订单", createdAt }],
     createdAt,
@@ -418,6 +467,8 @@ function saveOrderFromForm(event) {
     country: el.country.value.trim(),
     product: el.product.value.trim(),
     quantity: el.quantity.value.trim(),
+    weight: el.weight.value.trim(),
+    category: el.category.value.trim(),
     amount: el.amount.value.trim(),
     dueDate: el.dueDate.value,
     status: el.status.value,
@@ -488,6 +539,47 @@ function deleteIssue(issueId) {
   render();
 }
 
+function addContact(event) {
+  event.preventDefault();
+  const order = selectedOrder();
+  if (!order) return;
+  const phone = el.contactPhone.value.trim();
+  const email = el.contactEmail.value.trim();
+  const note = el.contactNote.value.trim();
+  if (!phone && !email) {
+    window.alert("请至少填写电话或邮箱。");
+    return;
+  }
+
+  const createdAt = new Date().toISOString();
+  order.contacts = order.contacts || [];
+  order.contacts.push({
+    id: createId(),
+    role: el.contactRole.value,
+    note,
+    phone,
+    email,
+    createdAt,
+    updatedAt: createdAt
+  });
+  touch(order, `新增${el.contactRole.value}联系方式${note ? `：${note}` : ""}`);
+  el.contactNote.value = "";
+  el.contactPhone.value = "";
+  el.contactEmail.value = "";
+  saveOrders();
+  render();
+}
+
+function deleteContact(contactId) {
+  const order = selectedOrder();
+  if (!order) return;
+  const contact = (order.contacts || []).find((item) => item.id === contactId);
+  order.contacts = (order.contacts || []).filter((item) => item.id !== contactId);
+  touch(order, `删除${contact?.role || "联系人"}联系方式${contact?.note ? `：${contact.note}` : ""}`);
+  saveOrders();
+  render();
+}
+
 function deleteOrder() {
   const order = selectedOrder();
   if (!order) return;
@@ -531,32 +623,54 @@ function previewWorkLog() {
   renderLogPreview();
 }
 
+async function readInfoFile(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  try {
+    const text = await fileToText(file);
+    el.workLog.value = text.slice(0, 60000);
+    state.pendingUpdates = parseWorkLog(text);
+    renderLogPreview();
+  } catch (error) {
+    window.alert(`文件识别失败：${error.message}`);
+  } finally {
+    event.target.value = "";
+  }
+}
+
 function parseWorkLog(text) {
   if (!text) return [];
-  const chunks = text
+  const chunks = [
+    ...expandStructuredRows(text),
+    ...text
     .split(/\n+/)
     .flatMap((line) => line.split(/[。；;]/))
     .map((line) => line.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+  ];
 
   const updates = [];
   chunks.forEach((line) => {
-    const order = matchOrder(line) || selectedOrder();
-    if (!order) return;
+    const orderNo = extractOrderNo(line);
+    const order = matchOrder(line) || null;
+    const fallbackOrder = order || selectedOrder();
+    if (!order && !orderNo && !fallbackOrder) return;
 
     const update = {
-      orderId: order.id,
-      orderNo: order.orderNo,
+      orderId: order?.id || fallbackOrder?.id || null,
+      orderNo: order?.orderNo || orderNo || fallbackOrder?.orderNo || "",
       source: line,
       stage: detectStage(line),
       status: detectStatus(line),
       issues: detectIssues(line),
       nextAction: detectNextAction(line),
       reminderAt: detectReminderAt(line),
+      orderPatch: extractOrderPatch(line),
+      contacts: extractContacts(line),
       detail: cleanLogDetail(line)
     };
 
-    if (update.stage || update.status || update.issues.length || update.nextAction || update.reminderAt) {
+    if (update.stage || update.status || update.issues.length || update.nextAction || update.reminderAt || Object.keys(update.orderPatch).length || update.contacts.length) {
       updates.push(update);
     }
   });
@@ -565,12 +679,16 @@ function parseWorkLog(text) {
 
 function matchOrder(line) {
   const lower = line.toLowerCase();
-  const explicit = line.match(/(?:订单号|订单|pi|po|so)[:：\s-]*([a-z0-9][a-z0-9._/-]{2,})/i)?.[1];
+  const explicit = extractOrderNo(line);
   if (explicit) {
     const hit = state.orders.find((order) => normalize(order.orderNo).includes(normalize(explicit)) || normalize(explicit).includes(normalize(order.orderNo)));
     if (hit) return hit;
   }
   return state.orders.find((order) => order.orderNo && lower.includes(order.orderNo.toLowerCase()));
+}
+
+function extractOrderNo(line) {
+  return line.match(/(?:订单号|订单|合同号|po|pi|so|invoice|order)[:：#\s-]*([a-z0-9][a-z0-9._/-]{2,})/i)?.[1] || "";
 }
 
 function detectStage(line) {
@@ -601,6 +719,56 @@ function detectNextAction(line) {
   const nextMatch = line.match(/(?:下一步|待办|跟进|需要|明天|今天)(.+)$/);
   if (!nextMatch) return "";
   return nextMatch[0].trim();
+}
+
+function extractOrderPatch(line) {
+  const patch = {};
+  const fieldRules = [
+    ["customer", /(?:客户|客人|买家|货主|customer|buyer)[:：\s]*([^,，;；\n]+)/i],
+    ["country", /(?:国家|地区|目的国|market|country)[:：\s]*([^,，;；\n]+)/i],
+    ["product", /(?:产品|货物|品名|product|goods|item)[:：\s]*([^,，;；\n]+)/i],
+    ["category", /(?:品类|类别|分类|category)[:：\s]*([^,，;；\n]+)/i],
+    ["quantity", /(?:数量|件数|qty|quantity)[:：\s]*([^,，;；\n]+)/i],
+    ["weight", /(?:重量|毛重|净重|体积|weight|gw|nw|cbm)[:：\s]*([^,，;；\n]+)/i],
+    ["amount", /(?:金额|货值|价格|amount|value|price)[:：\s]*([^,，;；\n]+)/i]
+  ];
+  fieldRules.forEach(([key, pattern]) => {
+    const value = line.match(pattern)?.[1]?.trim();
+    if (value) patch[key] = value;
+  });
+
+  if (!patch.weight) {
+    const weight = line.match(/(\d+(?:\.\d+)?\s*(?:kg|kgs|公斤|吨|t|cbm|方))/i)?.[1];
+    if (weight) patch.weight = weight;
+  }
+  if (!patch.quantity) {
+    const qty = line.match(/(\d+(?:\.\d+)?\s*(?:pcs|件|箱|ctns|sets|套|个))/i)?.[1];
+    if (qty) patch.quantity = qty;
+  }
+  return patch;
+}
+
+function extractContacts(line) {
+  const emails = [...line.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)].map((match) => match[0]);
+  const phones = [...line.matchAll(/(?:\+?\d[\d\s-]{6,}\d)/g)].map((match) => match[0].trim());
+  if (!emails.length && !phones.length) return [];
+
+  const role = detectContactRole(line);
+  const note = line.match(/(?:联系人|contact|备注|姓名|name)[:：\s]*([^,，;；\n]+)/i)?.[1]?.trim() || "";
+  const max = Math.max(emails.length, phones.length);
+  return Array.from({ length: max }, (_, index) => ({
+    role,
+    note,
+    phone: phones[index] || phones[0] || "",
+    email: emails[index] || emails[0] || ""
+  }));
+}
+
+function detectContactRole(line) {
+  if (/工厂|供应商|厂家|factory|supplier/i.test(line)) return "工厂";
+  if (/货主|客户|客人|买家|buyer|customer/i.test(line)) return "货主";
+  if (/货代|物流|forwarder|agent|shipping/i.test(line)) return "货代";
+  return "其他";
 }
 
 function detectIssueCategory(text) {
@@ -648,6 +816,8 @@ function renderLogPreview() {
       if (item.status) lines.push(`状态 → ${item.status}`);
       if (item.nextAction) lines.push(`下一步 → ${item.nextAction}`);
       if (item.reminderAt) lines.push(`提醒 → ${formatDate(item.reminderAt)}`);
+      if (Object.keys(item.orderPatch).length) lines.push(`货物信息 → ${formatPatch(item.orderPatch)}`);
+      if (item.contacts.length) lines.push(`联系人 → ${item.contacts.map((contact) => `${contact.role}${contact.email ? ` ${contact.email}` : ""}${contact.phone ? ` ${contact.phone}` : ""}`).join("；")}`);
       if (item.issues.length) lines.push(`新增问题 → ${item.issues.map((issue) => `${issue.category}:${issue.text}`).join("；")}`);
       return `<article class="preview-item"><strong>${escapeHtml(item.orderNo || "当前订单")}</strong><span>${escapeHtml(lines.join("，"))}</span><small>来源：${escapeHtml(item.source)}</small></article>`;
     })
@@ -657,11 +827,20 @@ function renderLogPreview() {
 function applyWorkLog() {
   if (!state.pendingUpdates.length) return;
   state.pendingUpdates.forEach((update) => {
-    const order = state.orders.find((item) => item.id === update.orderId);
+    let order = state.orders.find((item) => item.id === update.orderId);
+    if (!order && update.orderNo) {
+      order = findOrCreateOrder(update.orderNo);
+    }
     if (!order) return;
     ensureOrderShape(order);
     const changes = [];
     const targetStage = update.stage || order.stage || "询盘";
+    Object.entries(update.orderPatch || {}).forEach(([key, value]) => {
+      if (value && order[key] !== value) {
+        order[key] = value;
+        changes.push(`${fieldLabel(key)}：${value}`);
+      }
+    });
     if (update.stage && update.stage !== order.stage) {
       changes.push(`阶段 ${order.stage || "未填"} → ${update.stage}`);
       order.stage = update.stage;
@@ -693,6 +872,15 @@ function applyWorkLog() {
       if (!exists) {
         pushIssue(order, issue.text, issue.severity, { category: issue.category, stage: targetStage });
         changes.push(`新增${issue.category}问题：${issue.text}`);
+      }
+    });
+    (update.contacts || []).forEach((contact) => {
+      if (!contact.phone && !contact.email) return;
+      const exists = order.contacts?.some((item) => normalize(item.email) === normalize(contact.email) && normalize(item.phone) === normalize(contact.phone));
+      if (!exists) {
+        const createdAt = new Date().toISOString();
+        order.contacts.push({ id: createId(), ...contact, createdAt, updatedAt: createdAt });
+        changes.push(`新增${contact.role}联系人${contact.email ? ` ${contact.email}` : ""}${contact.phone ? ` ${contact.phone}` : ""}`);
       }
     });
     if (changes.length) touch(order, `日志自动更新：${changes.join("；")}`, targetStage);
@@ -742,6 +930,199 @@ function importData(event) {
   };
   reader.readAsText(file);
   event.target.value = "";
+}
+
+async function fileToText(file) {
+  const extension = file.name.split(".").pop().toLowerCase();
+  if (["xlsx", "xls"].includes(extension)) {
+    if (!window.XLSX) {
+      throw new Error("Excel 解析库未加载，请刷新页面后重试，或先另存为 CSV。");
+    }
+    const buffer = await file.arrayBuffer();
+    const workbook = window.XLSX.read(buffer, { type: "array" });
+    return workbook.SheetNames.map((sheetName) => {
+      const sheet = workbook.Sheets[sheetName];
+      const csv = window.XLSX.utils.sheet_to_csv(sheet);
+      return `工作表：${sheetName}\n${csv}`;
+    }).join("\n");
+  }
+  if (extension === "json") {
+    return jsonFileToText(await file.text());
+  }
+  if (extension === "pdf") {
+    return pdfToText(await file.arrayBuffer());
+  }
+  if (extension === "docx") {
+    return docxToText(await file.arrayBuffer());
+  }
+  return file.text();
+}
+
+function jsonFileToText(text) {
+  const data = JSON.parse(text);
+  const rows = Array.isArray(data) ? data : [data];
+  return rows.map((row) => flattenObject(row)
+    .map(([key, value]) => `${fieldLabel(mapHeaderKey(key) || key)}:${value}`)
+    .join("，"))
+    .join("\n");
+}
+
+function flattenObject(value, prefix = "") {
+  if (value === null || value === undefined) return [];
+  if (typeof value !== "object") return [[prefix, String(value)]];
+  if (Array.isArray(value)) {
+    return value.flatMap((item, index) => flattenObject(item, prefix ? `${prefix}${index + 1}` : String(index + 1)));
+  }
+  return Object.entries(value).flatMap(([key, item]) => {
+    const nextKey = prefix ? `${prefix}.${key}` : key;
+    return flattenObject(item, nextKey);
+  });
+}
+
+async function pdfToText(buffer) {
+  const pdfjs = window.pdfjsLib || globalThis.pdfjsLib;
+  if (!pdfjs) throw new Error("PDF 解析库未加载，请刷新页面后重试。");
+  pdfjs.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
+  const pdf = await pdfjs.getDocument({ data: buffer }).promise;
+  const pages = [];
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+    const content = await page.getTextContent();
+    pages.push(content.items.map((item) => item.str).join(" "));
+  }
+  return pages.join("\n");
+}
+
+async function docxToText(buffer) {
+  if (!window.mammoth) throw new Error("DOCX 解析库未加载，请刷新页面后重试。");
+  const result = await window.mammoth.extractRawText({ arrayBuffer: buffer });
+  return result.value || "";
+}
+
+function expandStructuredRows(text) {
+  const rows = parseDelimitedRows(text).filter((row) => row.some(Boolean));
+  if (rows.length < 2) return [];
+  const expanded = [];
+  for (let i = 0; i < rows.length - 1; i += 1) {
+    const header = rows[i].map((cell) => cell.trim());
+    const keys = header.map(mapHeaderKey);
+    const usefulCount = keys.filter(Boolean).length;
+    if (usefulCount < 2) continue;
+
+    let rowIndex = i + 1;
+    while (rowIndex < rows.length) {
+      const row = rows[rowIndex];
+      const rowHasAnotherHeader = row.map((cell) => mapHeaderKey(cell)).filter(Boolean).length >= 2;
+      if (rowHasAnotherHeader) break;
+      const parts = row.map((value, columnIndex) => {
+        const key = keys[columnIndex];
+        return key && value ? `${fieldLabel(key)}:${value.trim()}` : "";
+      }).filter(Boolean);
+      if (parts.length) expanded.push(parts.join("，"));
+      rowIndex += 1;
+    }
+  }
+  return expanded;
+}
+
+function parseDelimitedRows(text) {
+  return text
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const delimiter = line.includes("\t") ? "\t" : ",";
+      return splitDelimitedLine(line, delimiter).map((cell) => cell.trim());
+    });
+}
+
+function splitDelimitedLine(line, delimiter) {
+  const cells = [];
+  let current = "";
+  let quoted = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    if (char === '"') {
+      quoted = !quoted;
+    } else if (char === delimiter && !quoted) {
+      cells.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  cells.push(current);
+  return cells.map((cell) => cell.replace(/^"|"$/g, "").replace(/""/g, '"'));
+}
+
+function mapHeaderKey(header = "") {
+  const value = header.toLowerCase().replace(/\s/g, "");
+  if (/订单号|订单|合同号|po|pi|so|invoice|orderno/.test(value)) return "orderNo";
+  if (/客户|客人|买家|货主|customer|buyer/.test(value)) return "customer";
+  if (/国家|地区|目的国|country|market/.test(value)) return "country";
+  if (/产品|货物|品名|product|goods|item/.test(value)) return "product";
+  if (/品类|类别|分类|category/.test(value)) return "category";
+  if (/数量|件数|qty|quantity/.test(value)) return "quantity";
+  if (/重量|毛重|净重|体积|weight|gw|nw|cbm/.test(value)) return "weight";
+  if (/金额|货值|价格|amount|value|price/.test(value)) return "amount";
+  if (/电话|手机|phone|tel|mobile/.test(value)) return "phone";
+  if (/邮箱|邮件|email|mail/.test(value)) return "email";
+  if (/联系人|姓名|备注|contact|name|note/.test(value)) return "note";
+  if (/类型|角色|role|type/.test(value)) return "role";
+  return "";
+}
+
+function findOrCreateOrder(orderNo) {
+  let order = state.orders.find((item) => normalize(item.orderNo) === normalize(orderNo));
+  if (order) return order;
+  const createdAt = new Date().toISOString();
+  order = {
+    id: createId(),
+    orderNo,
+    customer: "",
+    country: "",
+    product: "",
+    quantity: "",
+    weight: "",
+    category: "",
+    amount: "",
+    dueDate: "",
+    status: "进行中",
+    stage: "询盘",
+    nextAction: "",
+    notes: "",
+    issues: [],
+    contacts: [],
+    stageNotes: createEmptyStageNotes(),
+    activities: [{ id: createId(), text: "从文件/日志自动创建订单", stage: "询盘", createdAt }],
+    createdAt,
+    updatedAt: createdAt
+  };
+  state.orders.unshift(order);
+  if (!state.selectedId) state.selectedId = order.id;
+  return order;
+}
+
+function fieldLabel(key) {
+  const labels = {
+    orderNo: "订单号",
+    customer: "客户",
+    country: "国家/地区",
+    product: "产品",
+    quantity: "数量",
+    weight: "重量",
+    category: "品类",
+    amount: "金额",
+    phone: "电话",
+    email: "邮箱",
+    role: "类型",
+    note: "联系人"
+  };
+  return labels[key] || key;
+}
+
+function formatPatch(patch) {
+  return Object.entries(patch).map(([key, value]) => `${fieldLabel(key)}:${value}`).join("；");
 }
 
 function formatDateTime(value) {
@@ -811,8 +1192,10 @@ function bindEvents() {
   el.deleteOrderBtn.addEventListener("click", deleteOrder);
   el.orderForm.addEventListener("submit", saveOrderFromForm);
   el.issueForm.addEventListener("submit", addIssue);
+  el.contactForm.addEventListener("submit", addContact);
   el.saveNodeNoteBtn.addEventListener("click", saveNodeNote);
   el.clearNodeReminderBtn.addEventListener("click", clearNodeReminder);
+  el.infoFileInput.addEventListener("change", readInfoFile);
   el.previewLogBtn.addEventListener("click", previewWorkLog);
   el.applyLogBtn.addEventListener("click", applyWorkLog);
   el.searchInput.addEventListener("input", renderOrderList);

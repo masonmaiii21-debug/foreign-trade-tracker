@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>外贸跟单记录工具</title>
     <link rel="stylesheet" href="./styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script type="module">
+      import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs";
+      window.pdfjsLib = pdfjsLib;
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
   </head>
   <body>
     <main class="app-shell">
@@ -118,6 +124,14 @@
                 <input id="quantity" autocomplete="off" placeholder="例如 2000 pcs" />
               </label>
               <label>
+                重量
+                <input id="weight" autocomplete="off" placeholder="例如 560 kg / 1.2 CBM" />
+              </label>
+              <label>
+                品类
+                <input id="category" autocomplete="off" placeholder="例如 家居用品 / 五金" />
+              </label>
+              <label>
                 金额
                 <input id="amount" autocomplete="off" placeholder="例如 USD 12,500" />
               </label>
@@ -173,11 +187,52 @@
             <div class="issue-list" id="issueList"></div>
           </section>
 
+          <section class="panel contact-panel">
+            <div class="section-title">
+              <h3>联系方式</h3>
+              <span id="contactCount"></span>
+            </div>
+
+            <form class="contact-form" id="contactForm">
+              <div class="contact-grid">
+                <label>
+                  类型
+                  <select id="contactRole">
+                    <option value="工厂">工厂</option>
+                    <option value="货主">货主</option>
+                    <option value="货代">货代</option>
+                    <option value="其他">其他</option>
+                  </select>
+                </label>
+                <label>
+                  备注
+                  <input id="contactNote" autocomplete="off" placeholder="例如 张经理 / 订舱联系人" />
+                </label>
+                <label>
+                  电话
+                  <input id="contactPhone" autocomplete="off" inputmode="tel" placeholder="电话" />
+                </label>
+                <label>
+                  邮箱
+                  <input id="contactEmail" autocomplete="off" inputmode="email" placeholder="邮箱" />
+                </label>
+              </div>
+              <button class="secondary" type="submit">添加联系人</button>
+            </form>
+
+            <div class="contact-list" id="contactList"></div>
+          </section>
+
           <section class="panel log-panel">
             <div class="section-title">
-              <h3>工作日志自动更新</h3>
-              <span>识别订单号、阶段、问题、下一步、提醒</span>
+              <h3>工作日志/文件自动识别</h3>
+              <span>识别订单、货物、联系人、阶段、问题、提醒</span>
             </div>
+            <label class="upload-zone">
+              <span>上传工作日志、订单表或资料文件</span>
+              <small>支持 txt、md、csv、json、xlsx、xls、pdf、docx；文件在浏览器本地解析</small>
+              <input id="infoFileInput" type="file" accept=".txt,.md,.csv,.json,.xlsx,.xls,.pdf,.docx" />
+            </label>
             <textarea id="workLog" rows="8" placeholder="示例：PI-2026-001 今天客户确认打样，发现包装标签尺寸不符，下一步明天发新版唛头给客户确认。"></textarea>
             <div class="log-actions">
               <button class="secondary" id="previewLogBtn" type="button">分析日志</button>

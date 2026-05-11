@@ -313,6 +313,7 @@ textarea:focus {
 
 .order-form,
 .issue-panel,
+.contact-panel,
 .log-panel,
 .activity-panel,
 .flow-panel,
@@ -374,11 +375,49 @@ label {
   margin-bottom: 14px;
 }
 
+.contact-form {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.contact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.contact-grid label {
+  margin-bottom: 0;
+}
+
+.upload-zone {
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: #fbfdfc;
+  cursor: pointer;
+}
+
+.upload-zone span {
+  color: var(--primary-dark);
+}
+
+.upload-zone small {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.upload-zone input {
+  margin-top: 10px;
+}
+
 .issue-controls select {
   max-width: 110px;
 }
 
 .issue-list,
+.contact-list,
 .activity-list,
 .log-preview,
 .reminder-list {
@@ -387,6 +426,7 @@ label {
 }
 
 .issue-item,
+.contact-item,
 .activity-item,
 .preview-item,
 .reminder-item {
@@ -585,6 +625,29 @@ label {
   gap: 12px;
 }
 
+.contact-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: start;
+}
+
+.contact-item strong {
+  color: var(--primary-dark);
+}
+
+.contact-item p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.contact-actions button {
+  width: 34px;
+  min-height: 34px;
+  padding: 0;
+}
+
 .issue-item p {
   margin: 8px 0;
   line-height: 1.45;
@@ -685,6 +748,10 @@ label {
 
   .progress-chain {
     grid-template-columns: repeat(11, 112px);
+  }
+
+  .contact-grid {
+    grid-template-columns: 1fr;
   }
 
   .node-actions {

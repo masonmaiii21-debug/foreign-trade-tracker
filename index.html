@@ -79,8 +79,8 @@
               </label>
               <div class="node-actions">
                 <label>
-                  提醒日期
-                  <input id="nodeReminderDate" type="date" />
+                  提醒时间
+                  <input id="nodeReminderAt" type="datetime-local" />
                 </label>
                 <button class="secondary" id="clearNodeReminderBtn" type="button">清除提醒</button>
                 <button class="primary" id="saveNodeNoteBtn" type="button">保存节点</button>
@@ -205,16 +205,20 @@
                   </select>
                 </label>
                 <label>
-                  备注
+                  姓名/备注
                   <input id="contactNote" autocomplete="off" placeholder="例如 张经理 / 订舱联系人" />
                 </label>
                 <label>
+                  区号
+                  <input id="contactDialCode" autocomplete="off" inputmode="tel" value="+86" placeholder="+86" />
+                </label>
+                <label>
                   电话
-                  <input id="contactPhone" autocomplete="off" inputmode="tel" placeholder="电话" />
+                  <input id="contactPhone" autocomplete="off" inputmode="tel" placeholder="例如 13800000000" />
                 </label>
                 <label>
                   邮箱
-                  <input id="contactEmail" autocomplete="off" inputmode="email" placeholder="邮箱" />
+                  <input id="contactEmail" autocomplete="off" inputmode="email" placeholder="name@example.com" />
                 </label>
               </div>
               <button class="secondary" type="submit">添加联系人</button>
@@ -251,6 +255,18 @@
         </section>
       </section>
     </main>
+
+    <div class="alarm-overlay hidden" id="alarmOverlay" role="dialog" aria-modal="true" aria-labelledby="alarmTitle">
+      <section class="alarm-dialog">
+        <p class="eyebrow">跟单提醒</p>
+        <h2 id="alarmTitle">需要跟进</h2>
+        <div class="alarm-content" id="alarmContent"></div>
+        <div class="alarm-actions">
+          <button class="secondary" id="snoozeAlarmBtn" type="button">10 分钟后提醒</button>
+          <button class="primary" id="dismissAlarmBtn" type="button">知道了</button>
+        </div>
+      </section>
+    </div>
 
     <template id="orderItemTemplate">
       <button class="order-item" type="button">

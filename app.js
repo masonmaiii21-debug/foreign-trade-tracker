@@ -31,7 +31,8 @@ const state = {
   orders: [],
   selectedId: null,
   selectedNode: "询盘",
-  pendingUpdates: []
+  pendingUpdates: [],
+  activeAlarm: null
 };
 
 const el = {
@@ -71,6 +72,7 @@ const el = {
   contactForm: document.querySelector("#contactForm"),
   contactRole: document.querySelector("#contactRole"),
   contactNote: document.querySelector("#contactNote"),
+  contactDialCode: document.querySelector("#contactDialCode"),
   contactPhone: document.querySelector("#contactPhone"),
   contactEmail: document.querySelector("#contactEmail"),
   contactCount: document.querySelector("#contactCount"),
@@ -79,7 +81,7 @@ const el = {
   nodeNoteTitle: document.querySelector("#nodeNoteTitle"),
   nodeNoteMeta: document.querySelector("#nodeNoteMeta"),
   nodeNoteText: document.querySelector("#nodeNoteText"),
-  nodeReminderDate: document.querySelector("#nodeReminderDate"),
+  nodeReminderAt: document.querySelector("#nodeReminderAt"),
   clearNodeReminderBtn: document.querySelector("#clearNodeReminderBtn"),
   saveNodeNoteBtn: document.querySelector("#saveNodeNoteBtn"),
   reminderCount: document.querySelector("#reminderCount"),
@@ -92,7 +94,12 @@ const el = {
   applyLogBtn: document.querySelector("#applyLogBtn"),
   logPreview: document.querySelector("#logPreview"),
   activityCount: document.querySelector("#activityCount"),
-  activityList: document.querySelector("#activityList")
+  activityList: document.querySelector("#activityList"),
+  alarmOverlay: document.querySelector("#alarmOverlay"),
+  alarmTitle: document.querySelector("#alarmTitle"),
+  alarmContent: document.querySelector("#alarmContent"),
+  snoozeAlarmBtn: document.querySelector("#snoozeAlarmBtn"),
+  dismissAlarmBtn: document.querySelector("#dismissAlarmBtn")
 };
 
 function createId() {
@@ -125,6 +132,13 @@ function selectedOrder() {
 function ensureOrderShape(order) {
   order.issues = Array.isArray(order.issues) ? order.issues : [];
   order.contacts = Array.isArray(order.contacts) ? order.contacts : [];
+  order.contacts.forEach((contact) => {
+    contact.name = contact.name || contact.note || "";
+    contact.note = contact.note || "";
+    contact.dialCode = contact.dialCode || dialCodeFromPhone(contact.phone) || "";
+    contact.email = contact.email || "";
+    contact.phone = contact.phone || "";
+  });
   order.activities = Array.isArray(order.activities) ? order.activities : [];
   order.weight = order.weight || "";
   order.category = order.category || "";
@@ -132,7 +146,7 @@ function ensureOrderShape(order) {
   STAGES.forEach((stage) => {
     order.stageNotes[stage] = {
       note: order.stageNotes[stage]?.note || "",
-      reminderAt: order.stageNotes[stage]?.reminderAt || "",
+      reminderAt: normalizeReminderAt(order.stageNotes[stage]?.reminderAt || ""),
       updatedAt: order.stageNotes[stage]?.updatedAt || ""
     };
   });
@@ -263,7 +277,7 @@ function renderProgressChain(order) {
     const tooltip = nodeTooltip(order, stage, note, stageIssues, stageActivities);
     const badges = [
       stageIssues.length ? `<span class="node-badge issue">${stageIssues.length} 问题</span>` : "",
-      note.reminderAt ? `<span class="node-badge reminder">${formatDate(note.reminderAt)}</span>` : ""
+      note.reminderAt ? `<span class="node-badge reminder">${formatReminder(note.reminderAt)}</span>` : ""
     ].join("");
 
     return `
@@ -294,7 +308,7 @@ function renderNodeEditor(order) {
   el.nodeNoteTitle.textContent = `${stage}节点`;
   el.nodeNoteMeta.textContent = `${stageActivities.length} 条详情 · ${stageIssues.length} 个问题`;
   el.nodeNoteText.value = note.note || "";
-  el.nodeReminderDate.value = note.reminderAt || "";
+  el.nodeReminderAt.value = toDateTimeLocalValue(note.reminderAt);
 }
 
 function renderReminders(order) {
@@ -312,10 +326,10 @@ function renderReminders(order) {
 
   reminders.sort((a, b) => a.reminderAt.localeCompare(b.reminderAt));
   el.reminderList.innerHTML = reminders.map((item) => {
-    const due = isDueDate(item.reminderAt);
+    const due = isDueReminder(item.reminderAt);
     return `
       <article class="reminder-item ${due ? "due" : ""}">
-        <strong>${escapeHtml(item.stage)} · ${formatDate(item.reminderAt)}</strong>
+        <strong>${escapeHtml(item.stage)} · ${formatReminder(item.reminderAt)}</strong>
         <span>${escapeHtml(item.note || order.nextAction || "需要跟进")}</span>
       </article>
     `;
@@ -336,7 +350,7 @@ function nodeTooltip(order, stage, note, stageIssues, stageActivities) {
   return `
     <strong>${escapeHtml(stage)}</strong>
     <p>备注：${escapeHtml(note.note || "暂无")}</p>
-    <p>提醒：${escapeHtml(note.reminderAt ? formatDate(note.reminderAt) : "无")}</p>
+    <p>提醒：${escapeHtml(note.reminderAt ? formatReminder(note.reminderAt) : "无")}</p>
     <p>最近详情：${escapeHtml(latestActivity)}</p>
     <p>问题：${escapeHtml(latestIssue)}</p>
   `;
@@ -399,9 +413,10 @@ function renderContacts(order) {
     .forEach((contact) => {
       const article = document.createElement("article");
       article.className = "contact-item";
+      const displayName = contact.name || contact.note || "";
       article.innerHTML = `
         <div>
-          <strong>${escapeHtml(contact.role || "其他")}${contact.note ? ` · ${escapeHtml(contact.note)}` : ""}</strong>
+          <strong>${escapeHtml(contact.role || "其他")}${displayName ? ` · ${escapeHtml(displayName)}` : ""}</strong>
           <p>电话：${escapeHtml(contact.phone || "未填")}<br />邮箱：${escapeHtml(contact.email || "未填")}</p>
         </div>
         <div class="contact-actions">
@@ -545,26 +560,38 @@ function addContact(event) {
   event.preventDefault();
   const order = selectedOrder();
   if (!order) return;
+  const dialCode = el.contactDialCode.value.trim();
   const phone = el.contactPhone.value.trim();
   const email = el.contactEmail.value.trim();
-  const note = el.contactNote.value.trim();
+  const name = el.contactNote.value.trim();
   if (!phone && !email) {
     window.alert("请至少填写电话或邮箱。");
     return;
   }
+  if (email && !isValidEmail(email)) {
+    window.alert("邮箱格式不正确，请填写类似 name@example.com 的邮箱。");
+    return;
+  }
+  if (phone && !isValidDialCode(dialCode) && !phone.trim().startsWith("+")) {
+    window.alert("请填写电话区号，例如中国 +86、美国 +1。");
+    return;
+  }
 
   const createdAt = new Date().toISOString();
+  const fullPhone = phone ? formatPhoneWithDialCode(dialCode, phone) : "";
   order.contacts = order.contacts || [];
   order.contacts.push({
     id: createId(),
     role: el.contactRole.value,
-    note,
-    phone,
+    name,
+    note: name,
+    dialCode: phone.startsWith("+") ? dialCodeFromPhone(phone) : dialCode,
+    phone: fullPhone,
     email,
     createdAt,
     updatedAt: createdAt
   });
-  touch(order, `新增${el.contactRole.value}联系方式${note ? `：${note}` : ""}`);
+  touch(order, `新增${el.contactRole.value}联系方式${name ? `：${name}` : ""}`);
   el.contactNote.value = "";
   el.contactPhone.value = "";
   el.contactEmail.value = "";
@@ -577,7 +604,8 @@ function deleteContact(contactId) {
   if (!order) return;
   const contact = (order.contacts || []).find((item) => item.id === contactId);
   order.contacts = (order.contacts || []).filter((item) => item.id !== contactId);
-  touch(order, `删除${contact?.role || "联系人"}联系方式${contact?.note ? `：${contact.note}` : ""}`);
+  const displayName = contact?.name || contact?.note || "";
+  touch(order, `删除${contact?.role || "联系人"}联系方式${displayName ? `：${displayName}` : ""}`);
   saveOrders();
   render();
 }
@@ -600,7 +628,7 @@ function saveNodeNote() {
   const stage = state.selectedNode || order.stage || "询盘";
   const note = order.stageNotes[stage];
   note.note = el.nodeNoteText.value.trim();
-  note.reminderAt = el.nodeReminderDate.value;
+  note.reminderAt = normalizeReminderAt(el.nodeReminderAt.value);
   note.updatedAt = new Date().toISOString();
   touch(order, `更新${stage}节点：${note.note || "修改备注/提醒"}`, stage);
   saveOrders();
@@ -759,14 +787,24 @@ function extractContacts(line) {
   if (!emails.length && !phones.length) return [];
 
   const role = detectContactRole(line);
-  const note = line.match(/(?:联系人|contact|备注|姓名|name)[:：\s]*([^,，;；\n]+)/i)?.[1]?.trim() || "";
+  const name = extractContactName(line);
   const max = Math.max(emails.length, phones.length);
   return Array.from({ length: max }, (_, index) => ({
     role,
-    note,
-    phone: phones[index] || phones[0] || "",
+    name,
+    note: name,
+    phone: normalizeExtractedPhone(phones[index] || phones[0] || ""),
     email: emails[index] || emails[0] || ""
   }));
+}
+
+function extractContactName(line) {
+  const matched = line.match(/(?:联系人|contact|备注|姓名|name)[:：\s]*([^,，;；\n]+)/i)?.[1]?.trim();
+  if (!matched) return "";
+  return matched
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "")
+    .replace(/(?:\+?\d[\d\s-]{6,}\d)/g, "")
+    .trim();
 }
 
 function detectContactRole(line) {
@@ -788,8 +826,9 @@ function cleanLogDetail(line) {
 
 function detectReminderAt(line) {
   const today = new Date();
+  const time = extractTimeParts(line);
   const dateMatch = line.match(/(20\d{2})[-/.年](\d{1,2})[-/.月](\d{1,2})日?/);
-  if (dateMatch) return toDateInput(Number(dateMatch[1]), Number(dateMatch[2]), Number(dateMatch[3]));
+  if (dateMatch) return toDateTimeInput(Number(dateMatch[1]), Number(dateMatch[2]), Number(dateMatch[3]), time.hour, time.minute);
 
   const monthDayMatch = line.match(/(\d{1,2})月(\d{1,2})日?/);
   if (monthDayMatch) {
@@ -798,13 +837,23 @@ function detectReminderAt(line) {
     let year = today.getFullYear();
     const candidate = new Date(year, month - 1, day);
     if (candidate < startOfToday()) year += 1;
-    return toDateInput(year, month, day);
+    return toDateTimeInput(year, month, day, time.hour, time.minute);
   }
 
-  if (line.includes("后天")) return offsetDateInput(2);
-  if (line.includes("明天")) return offsetDateInput(1);
-  if (line.includes("今天") || line.includes("今日")) return offsetDateInput(0);
+  if (line.includes("后天")) return offsetDateTimeInput(2, time.hour, time.minute);
+  if (line.includes("明天")) return offsetDateTimeInput(1, time.hour, time.minute);
+  if (line.includes("今天") || line.includes("今日")) return offsetDateTimeInput(0, time.hour, time.minute);
   return "";
+}
+
+function extractTimeParts(line) {
+  const explicit = line.match(/(?:上午|下午|晚上|晚|早上|中午)?\s*(\d{1,2})[:：点](\d{1,2})?分?/);
+  if (!explicit) return { hour: 9, minute: 0 };
+  let hour = Number(explicit[1]);
+  const minute = Number(explicit[2] || 0);
+  if (/下午|晚上|晚/.test(explicit[0]) && hour < 12) hour += 12;
+  if (/中午/.test(explicit[0]) && hour < 11) hour += 12;
+  return { hour: Math.min(hour, 23), minute: Math.min(minute, 59) };
 }
 
 function renderLogPreview() {
@@ -820,9 +869,9 @@ function renderLogPreview() {
       if (item.stage) lines.push(`阶段 → ${item.stage}`);
       if (item.status) lines.push(`状态 → ${item.status}`);
       if (item.nextAction) lines.push(`下一步 → ${item.nextAction}`);
-      if (item.reminderAt) lines.push(`提醒 → ${formatDate(item.reminderAt)}`);
+      if (item.reminderAt) lines.push(`提醒 → ${formatReminder(item.reminderAt)}`);
       if (Object.keys(item.orderPatch).length) lines.push(`货物信息 → ${formatPatch(item.orderPatch)}`);
-      if (item.contacts.length) lines.push(`联系人 → ${item.contacts.map((contact) => `${contact.role}${contact.email ? ` ${contact.email}` : ""}${contact.phone ? ` ${contact.phone}` : ""}`).join("；")}`);
+      if (item.contacts.length) lines.push(`联系人 → ${item.contacts.map((contact) => `${contact.role}${contact.name ? ` ${contact.name}` : ""}${contact.email ? ` ${contact.email}` : ""}${contact.phone ? ` ${contact.phone}` : ""}`).join("；")}`);
       if (item.issues.length) lines.push(`新增问题 → ${item.issues.map((issue) => `${issue.category}:${issue.text}`).join("；")}`);
       return `<article class="preview-item"><strong>${escapeHtml(item.orderNo || "当前订单")}</strong><span>${escapeHtml(lines.join("，"))}</span><small>来源：${escapeHtml(item.source)}</small></article>`;
     })
@@ -870,7 +919,7 @@ function applyWorkLog() {
     if (update.reminderAt) {
       order.stageNotes[targetStage].reminderAt = update.reminderAt;
       order.stageNotes[targetStage].updatedAt = new Date().toISOString();
-      changes.push(`${targetStage}提醒：${formatDate(update.reminderAt)}`);
+      changes.push(`${targetStage}提醒：${formatReminder(update.reminderAt)}`);
     }
     update.issues.forEach((issue) => {
       const exists = order.issues?.some((item) => item.text === issue.text && item.status !== "已解决");
@@ -881,11 +930,21 @@ function applyWorkLog() {
     });
     (update.contacts || []).forEach((contact) => {
       if (!contact.phone && !contact.email) return;
-      const exists = order.contacts?.some((item) => normalize(item.email) === normalize(contact.email) && normalize(item.phone) === normalize(contact.phone));
+      if (contact.email && !isValidEmail(contact.email)) return;
+      const phone = normalizeExtractedPhone(contact.phone || "");
+      const exists = order.contacts?.some((item) => normalize(item.email) === normalize(contact.email) && normalize(item.phone) === normalize(phone));
       if (!exists) {
         const createdAt = new Date().toISOString();
-        order.contacts.push({ id: createId(), ...contact, createdAt, updatedAt: createdAt });
-        changes.push(`新增${contact.role}联系人${contact.email ? ` ${contact.email}` : ""}${contact.phone ? ` ${contact.phone}` : ""}`);
+        order.contacts.push({
+          id: createId(),
+          ...contact,
+          phone,
+          dialCode: dialCodeFromPhone(phone),
+          note: contact.note || contact.name || "",
+          createdAt,
+          updatedAt: createdAt
+        });
+        changes.push(`新增${contact.role}联系人${contact.name ? ` ${contact.name}` : ""}${contact.email ? ` ${contact.email}` : ""}${phone ? ` ${phone}` : ""}`);
       }
     });
     if (changes.length) touch(order, `日志自动更新：${changes.join("；")}`, targetStage);
@@ -895,6 +954,7 @@ function applyWorkLog() {
   el.workLog.value = "";
   saveOrders();
   render();
+  checkReminderAlarms();
 }
 
 function touch(order, activityText, stage = "") {
@@ -906,6 +966,80 @@ function addActivity(order, text, shouldTouch = true, stage = "") {
   order.activities = order.activities || [];
   order.activities.push({ id: createId(), text, stage: stage || order.stage || "询盘", createdAt: new Date().toISOString() });
   if (shouldTouch) order.updatedAt = new Date().toISOString();
+}
+
+function startReminderWatcher() {
+  checkReminderAlarms();
+  window.setInterval(checkReminderAlarms, 30000);
+}
+
+function checkReminderAlarms() {
+  if (state.activeAlarm || !el.alarmOverlay.classList.contains("hidden")) return;
+  const due = collectDueReminders().find((item) => !sessionStorage.getItem(alarmKey(item)));
+  if (due) showAlarm(due);
+}
+
+function collectDueReminders() {
+  return state.orders.flatMap((order) => {
+    ensureOrderShape(order);
+    return STAGES.map((stage) => ({
+      order,
+      stage,
+      reminderAt: order.stageNotes?.[stage]?.reminderAt || "",
+      note: order.stageNotes?.[stage]?.note || ""
+    }));
+  }).filter((item) => item.reminderAt && isDueReminder(item.reminderAt));
+}
+
+function showAlarm(alarm) {
+  state.activeAlarm = alarm;
+  el.alarmTitle.textContent = `${alarm.order.orderNo || "订单"} · ${alarm.stage}`;
+  el.alarmContent.innerHTML = `
+    <p><strong>提醒时间：</strong>${escapeHtml(formatReminder(alarm.reminderAt))}</p>
+    <p><strong>客户：</strong>${escapeHtml(alarm.order.customer || "未填写")}</p>
+    <p><strong>产品：</strong>${escapeHtml(alarm.order.product || "未填写")}</p>
+    <p><strong>事项：</strong>${escapeHtml(alarm.note || alarm.order.nextAction || "需要跟进")}</p>
+  `;
+  el.alarmOverlay.classList.remove("hidden");
+  sendBrowserNotification(alarm);
+}
+
+function dismissAlarm() {
+  if (state.activeAlarm) sessionStorage.setItem(alarmKey(state.activeAlarm), "dismissed");
+  state.activeAlarm = null;
+  el.alarmOverlay.classList.add("hidden");
+  checkReminderAlarms();
+}
+
+function snoozeAlarm() {
+  const alarm = state.activeAlarm;
+  if (!alarm) return;
+  const next = new Date();
+  next.setMinutes(next.getMinutes() + 10);
+  alarm.order.stageNotes[alarm.stage].reminderAt = toDateTimeInput(next.getFullYear(), next.getMonth() + 1, next.getDate(), next.getHours(), next.getMinutes());
+  alarm.order.stageNotes[alarm.stage].updatedAt = new Date().toISOString();
+  touch(alarm.order, `${alarm.stage}提醒延后 10 分钟`, alarm.stage);
+  state.activeAlarm = null;
+  saveOrders();
+  el.alarmOverlay.classList.add("hidden");
+  render();
+}
+
+function alarmKey(item) {
+  return `alarm:${item.order.id}:${item.stage}:${item.reminderAt}`;
+}
+
+function requestNotificationPermission() {
+  if (!("Notification" in window) || Notification.permission !== "default") return;
+  Notification.requestPermission().catch(() => {});
+}
+
+function sendBrowserNotification(alarm) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  new Notification(`跟单提醒：${alarm.order.orderNo || "订单"}`, {
+    body: `${alarm.stage} · ${alarm.note || alarm.order.nextAction || "需要跟进"}`,
+    tag: alarmKey(alarm)
+  });
 }
 
 function exportData() {
@@ -1072,7 +1206,8 @@ function mapHeaderKey(header = "") {
   if (/金额|货值|价格|amount|value|price/.test(value)) return "amount";
   if (/电话|手机|phone|tel|mobile/.test(value)) return "phone";
   if (/邮箱|邮件|email|mail/.test(value)) return "email";
-  if (/联系人|姓名|备注|contact|name|note/.test(value)) return "note";
+  if (/联系人|姓名|contact|name/.test(value)) return "name";
+  if (/备注|note/.test(value)) return "note";
   if (/类型|角色|role|type/.test(value)) return "role";
   return "";
 }
@@ -1121,7 +1256,8 @@ function fieldLabel(key) {
     phone: "电话",
     email: "邮箱",
     role: "类型",
-    note: "联系人"
+    name: "姓名",
+    note: "备注"
   };
   return labels[key] || key;
 }
@@ -1148,6 +1284,19 @@ function formatDate(value) {
   return date.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" });
 }
 
+function formatReminder(value) {
+  if (!value) return "";
+  const date = new Date(normalizeReminderAt(value));
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  });
+}
+
 function toDateInput(year, month, day) {
   const date = new Date(year, month - 1, day);
   return [
@@ -1157,10 +1306,20 @@ function toDateInput(year, month, day) {
   ].join("-");
 }
 
+function toDateTimeInput(year, month, day, hour = 9, minute = 0) {
+  return `${toDateInput(year, month, day)}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
 function offsetDateInput(days) {
   const date = startOfToday();
   date.setDate(date.getDate() + days);
   return toDateInput(date.getFullYear(), date.getMonth() + 1, date.getDate());
+}
+
+function offsetDateTimeInput(days, hour = 9, minute = 0) {
+  const date = startOfToday();
+  date.setDate(date.getDate() + days);
+  return toDateTimeInput(date.getFullYear(), date.getMonth() + 1, date.getDate(), hour, minute);
 }
 
 function startOfToday() {
@@ -1174,6 +1333,50 @@ function isDueDate(value) {
   const date = new Date(value);
   date.setHours(0, 0, 0, 0);
   return date <= startOfToday();
+}
+
+function normalizeReminderAt(value) {
+  if (!value) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return `${value}T09:00`;
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) return value.slice(0, 16);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return toDateTimeInput(date.getFullYear(), date.getMonth() + 1, date.getDate(), date.getHours(), date.getMinutes());
+}
+
+function toDateTimeLocalValue(value) {
+  return normalizeReminderAt(value);
+}
+
+function isDueReminder(value) {
+  const reminderAt = normalizeReminderAt(value);
+  if (!reminderAt) return false;
+  return new Date(reminderAt).getTime() <= Date.now();
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
+}
+
+function isValidDialCode(value) {
+  return /^\+\d{1,4}$/.test(value);
+}
+
+function formatPhoneWithDialCode(dialCode, phone) {
+  const compact = phone.replace(/[^\d+]/g, "");
+  if (compact.startsWith("+")) return compact;
+  return `${dialCode}${compact.replace(/^0+/, "")}`;
+}
+
+function dialCodeFromPhone(phone = "") {
+  return phone.match(/^\+\d{1,4}/)?.[0] || "";
+}
+
+function normalizeExtractedPhone(phone = "") {
+  const compact = phone.replace(/[^\d+]/g, "");
+  if (!compact) return "";
+  if (compact.startsWith("+")) return compact;
+  return `+86${compact.replace(/^0+/, "")}`;
 }
 
 function inferStageFromText(text = "") {
@@ -1208,9 +1411,13 @@ function bindEvents() {
   el.statusFilter.addEventListener("change", renderOrderList);
   el.exportBtn.addEventListener("click", exportData);
   el.importInput.addEventListener("change", importData);
+  el.dismissAlarmBtn.addEventListener("click", dismissAlarm);
+  el.snoozeAlarmBtn.addEventListener("click", snoozeAlarm);
+  document.addEventListener("click", requestNotificationPermission, { once: true });
 }
 
 populateSelects();
 loadOrders();
 bindEvents();
 render();
+startReminderWatcher();

@@ -1,8 +1,8 @@
 const STORAGE_KEY = "foreignTradeTracker.orders.v1";
 const CLOUD_SETTINGS_KEY = "foreignTradeTracker.cloudReminder.v1";
 const CLOUD_REMINDER_BACKEND = {
-  functionUrl: "",
-  anonKey: ""
+  functionUrl: "https://lmuxnfneqmzcwoblmjzf.supabase.co/functions/v1/sync-reminders",
+  anonKey: "sb_publishable_dP0ZDU3sEN5oVpoDPtA_-A_Pz4oMxtX"
 };
 
 const STAGES = ["询盘", "报价", "打样", "合同", "生产", "验货", "订舱", "出运", "收款", "售后", "完成"];

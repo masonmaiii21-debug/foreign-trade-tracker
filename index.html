@@ -77,23 +77,25 @@
                 节点备注
                 <textarea id="nodeNoteText" rows="3" placeholder="记录该节点的具体情况、客户要求、供应商反馈等"></textarea>
               </label>
-              <div class="node-actions">
+              <div class="alarm-picker" aria-label="提醒时间选择">
                 <label>
-                  提醒月份
+                  月
                   <select id="nodeReminderMonth"></select>
                 </label>
                 <label>
-                  提醒日期
+                  日
                   <select id="nodeReminderDay"></select>
                 </label>
                 <label>
-                  提醒小时
+                  时
                   <select id="nodeReminderHour"></select>
                 </label>
                 <label>
-                  提醒分钟
+                  分
                   <select id="nodeReminderMinute"></select>
                 </label>
+              </div>
+              <div class="node-actions">
                 <button class="secondary" id="clearNodeReminderBtn" type="button">清除提醒</button>
                 <button class="primary" id="saveNodeNoteBtn" type="button">保存节点</button>
               </div>

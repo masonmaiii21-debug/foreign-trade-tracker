@@ -589,9 +589,33 @@ label {
   font-size: 13px;
 }
 
+.alarm-picker {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fbfdfc;
+}
+
+.alarm-picker label {
+  margin-bottom: 0;
+  text-align: center;
+}
+
+.alarm-picker select {
+  height: 116px;
+  padding: 8px;
+  overflow-y: auto;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 800;
+}
+
 .node-actions {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto auto;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
   align-items: end;
 }
@@ -835,6 +859,10 @@ label {
 
   .node-actions {
     grid-template-columns: 1fr;
+  }
+
+  .alarm-picker {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

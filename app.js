@@ -190,10 +190,13 @@ function populateSelects() {
   }).join("")}`;
   el.nodeReminderHour.innerHTML = `<option value="">选择小时</option>${Array.from({ length: 24 }, (_, hour) => {
     const value = String(hour).padStart(2, "0");
-    const label = hour === 0 ? "00点（12点午夜）" : `${value}点`;
+    const label = hour === 0 ? "00点" : `${value}点`;
     return `<option value="${value}">${label}</option>`;
   }).join("")}`;
-  el.nodeReminderMinute.innerHTML = `<option value="">选择分钟</option>${["00", "15", "30", "45"].map((minute) => `<option value="${minute}">${minute}分</option>`).join("")}`;
+  el.nodeReminderMinute.innerHTML = `<option value="">选择分钟</option>${Array.from({ length: 60 }, (_, minute) => {
+    const value = String(minute).padStart(2, "0");
+    return `<option value="${value}">${value}分</option>`;
+  }).join("")}`;
 }
 
 function render() {

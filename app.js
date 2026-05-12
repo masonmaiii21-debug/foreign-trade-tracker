@@ -95,6 +95,7 @@ const el = {
   saveNodeNoteBtn: document.querySelector("#saveNodeNoteBtn"),
   reminderCount: document.querySelector("#reminderCount"),
   reminderList: document.querySelector("#reminderList"),
+  followSummary: document.querySelector("#followSummary"),
   uploadFileBtn: document.querySelector("#uploadFileBtn"),
   fileReadHint: document.querySelector("#fileReadHint"),
   infoFileInput: document.querySelector("#infoFileInput"),
@@ -359,6 +360,7 @@ function renderReminders(order) {
   el.reminderCount.textContent = reminders.length ? `${reminders.length} 条` : "无";
   if (!reminders.length) {
     el.reminderList.innerHTML = `<div class="reminder-item">暂无提醒</div>`;
+    renderFollowSummary(order);
     return;
   }
 
@@ -372,6 +374,7 @@ function renderReminders(order) {
       </article>
     `;
   }).join("");
+  renderFollowSummary(order);
 }
 
 function renderCloudSettings() {
@@ -382,6 +385,40 @@ function renderCloudSettings() {
   const backendReady = settings.functionUrl && settings.anonKey;
   const ready = settings.email && backendReady;
   el.cloudReminderStatus.textContent = ready ? "已配置" : backendReady ? "待填邮箱" : "后台未配置";
+}
+
+function renderFollowSummary(order) {
+  const openIssues = (order.issues || []).filter((issue) => issue.status !== "已解决");
+  const contacts = order.contacts || [];
+  const primaryContact = contacts[0];
+  const goods = [
+    order.product ? `产品：${order.product}` : "",
+    order.quantity ? `数量：${order.quantity}` : "",
+    order.weight ? `重量：${order.weight}` : "",
+    order.category ? `品类：${order.category}` : ""
+  ].filter(Boolean);
+
+  el.followSummary.innerHTML = `
+    <div class="follow-grid">
+      <article>
+        <strong>当前阶段</strong>
+        <span>${escapeHtml(order.stage || "询盘")} · ${escapeHtml(order.status || "进行中")}</span>
+      </article>
+      <article>
+        <strong>下一步</strong>
+        <span>${escapeHtml(order.nextAction || "暂无下一步")}</span>
+      </article>
+      <article>
+        <strong>问题</strong>
+        <span>${openIssues.length ? `${openIssues.length} 个未解决` : "暂无未解决问题"}</span>
+      </article>
+      <article>
+        <strong>联系人</strong>
+        <span>${escapeHtml(primaryContact ? `${primaryContact.role || "联系人"} ${primaryContact.name || primaryContact.note || ""} ${primaryContact.phone || primaryContact.email || ""}` : "暂无联系人")}</span>
+      </article>
+    </div>
+    <div class="goods-strip">${goods.length ? goods.map((item) => `<span>${escapeHtml(item)}</span>`).join("") : "<span>暂无货物摘要</span>"}</div>
+  `;
 }
 
 function nodeSummary(order, stage, note, stageIssues, stageActivities) {

@@ -385,6 +385,8 @@ function renderCloudSettings() {
   const backendReady = settings.functionUrl && settings.anonKey;
   const ready = settings.email && backendReady;
   el.cloudReminderStatus.textContent = ready ? "已配置" : backendReady ? "待填邮箱" : "后台未配置";
+  el.syncCloudRemindersBtn.disabled = !backendReady;
+  el.syncCloudRemindersBtn.title = backendReady ? "" : "后台配置完成后可同步邮箱提醒";
 }
 
 function renderFollowSummary(order) {
@@ -1159,14 +1161,14 @@ function saveCloudSettings() {
     return;
   }
   localStorage.setItem(CLOUD_SETTINGS_KEY, JSON.stringify(settings));
-  el.cloudReminderStatus.textContent = settings.email && settings.functionUrl && settings.anonKey ? "已配置" : "未配置";
+  renderCloudSettings();
 }
 
 async function syncCloudReminders() {
   saveCloudSettings();
   const settings = loadCloudSettings();
   if (!settings.email || !settings.functionUrl || !settings.anonKey) {
-    window.alert("请先填写接收邮箱。后台邮箱提醒还没有完成站点配置。");
+    el.cloudReminderStatus.textContent = "后台未配置";
     return;
   }
   const reminders = state.orders.flatMap((order) => {

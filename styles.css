@@ -748,6 +748,18 @@ label {
   margin-top: 12px;
 }
 
+.cloud-note {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.cloud-actions button:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
 .cloud-actions {
   display: flex;
   flex-wrap: wrap;

@@ -1,12 +1,13 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const SUPABASE_URL = "https://lmuxnfneqmzcwoblmjzf.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_dP0ZDU3sEN5oVpoDPtA_-A_Pz4oMxtX";
+
 Deno.serve(async () => {
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-  );
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
   const fromEmail = Deno.env.get("REMINDER_FROM_EMAIL") || "Trade Tracker <onboarding@resend.dev>";
+
   if (!resendApiKey) {
     return json({ error: "Missing RESEND_API_KEY" }, 500);
   }
@@ -19,6 +20,7 @@ Deno.serve(async () => {
     .limit(50);
 
   if (error) return json({ error: error.message }, 500);
+
   let sent = 0;
 
   for (const reminder of reminders ?? []) {

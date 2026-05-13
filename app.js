@@ -5,31 +5,44 @@ const CLOUD_REMINDER_BACKEND = {
   anonKey: "sb_publishable_dP0ZDU3sEN5oVpoDPtA_-A_Pz4oMxtX"
 };
 
-const STAGES = ["询盘", "报价", "打样", "合同", "生产", "验货", "订舱", "出运", "收款", "售后", "完成"];
+const STAGES = ["询盘", "报价", "寄样", "确认样", "签约", "定金", "备料", "排产", "生产", "中检", "终检", "订舱", "装柜", "报关", "出运", "交单", "结汇", "售后", "退税", "完成"];
 const STATUSES = ["进行中", "待客户", "有风险", "暂停", "已完成"];
 
 const stageKeywords = [
-  ["完成", ["完成", "结束", "结案", "已收尾"]],
-  ["收款", ["收款", "尾款", "定金", "付款", "水单", "到账"]],
-  ["出运", ["出运", "发货", "装柜", "提单", "报关", "清关", "船期"]],
-  ["订舱", ["订舱", "booking", "订船", "舱位"]],
-  ["验货", ["验货", "质检", "qc", "inspection", "验厂"]],
-  ["生产", ["生产", "排产", "量产", "大货", "工厂在做"]],
-  ["合同", ["合同", "pi", "形式发票", "po", "订单确认"]],
-  ["打样", ["打样", "样品", "寄样", "样板", "确认样"]],
-  ["报价", ["报价", "报盘", "价格", "询价"]]
+  ["完成", ["完成", "结束", "结案", "已收尾", "归档"]],
+  ["退税", ["退税", "出口退税", "退税款", "退税率", "退税申报"]],
+  ["售后", ["售后", "客户反馈", "投诉", "回访", "after sales", "售后服务"]],
+  ["结汇", ["结汇", "尾款", "收款", "到账", "水单", "付款", "结算", "lc", "信用证"]],
+  ["交单", ["交单", "单证", "寄单", "发票", "箱单", "产地证", "提单副本", "交银行"]],
+  ["出运", ["出运", "发货", "装船", "离港", "提单", "船期", "清关", "到港", "开船"]],
+  ["报关", ["报关", "商检", "通关", "海关", "customs", "电子口岸"]],
+  ["装柜", ["装柜", "装箱", "拖车", "装货", "loading", "柜号"]],
+  ["订舱", ["订舱", "booking", "订船", "舱位", "船公司", "so"]],
+  ["终检", ["终检", "出货检验", "出厂检验", "成品检验", "final inspection", "尾期检验"]],
+  ["中检", ["中检", "中期检验", "过程检验", "inline inspection", "巡检", "中查"]],
+  ["生产", ["生产", "量产", "大货", "工厂在做", "车间"]],
+  ["排产", ["排产", "排期", "排单", "产线安排", "schedule", "生产计划"]],
+  ["备料", ["备料", "采购", "原材料", "辅料", "面料", "配件", "采购单", "物料"]],
+  ["定金", ["定金", "预付款", "订金", "首款", "deposit", "定金到账"]],
+  ["签约", ["签约", "合同", "pi", "形式发票", "po", "订单确认", "签单"]],
+  ["确认样", ["确认样", "封样", "确认版", "样板确认", "approved sample", "产前样"]],
+  ["寄样", ["寄样", "样品", "打样", "寄送", "快递单号", "sample", "样版"]],
+  ["报价", ["报价", "报盘", "价格", "议价", "quotation", "fob", "cif"]],
+  ["询盘", ["询盘", "询价", "enquiry", "inquiry", "需求", "求购", "意向"]]
 ];
 
 const issueKeywords = ["问题", "异常", "投诉", "缺少", "破损", "延期", "延误", "错误", "不符", "无法", "失败", "风险", "质量", "返工", "客户反馈"];
 const riskKeywords = ["风险", "延期", "延误", "投诉", "返工", "无法", "失败", "暂停", "不符"];
 const waitingKeywords = ["等客户", "待客户", "客户确认", "等确认", "客户回复"];
 const issueRules = [
-  ["质量", ["质量", "破损", "不良", "瑕疵", "色差", "尺寸不符", "返工", "不符"]],
-  ["交期", ["延期", "延误", "赶不上", "来不及", "交期", "船期"]],
-  ["付款", ["付款", "尾款", "定金", "水单", "到账", "信用证", "lc"]],
-  ["单证", ["单证", "发票", "箱单", "提单", "产地证", "报关"]],
-  ["物流", ["订舱", "装柜", "清关", "报关", "货代", "仓库", "物流"]],
-  ["沟通", ["客户反馈", "客户投诉", "未回复", "确认慢", "沟通"]]
+  ["质量", ["质量", "破损", "不良", "瑕疵", "色差", "尺寸不符", "返工", "不符", "次品"]],
+  ["交期", ["延期", "延误", "赶不上", "来不及", "交期", "船期", "推迟", "赶不及"]],
+  ["样品", ["样品", "打样", "寄样", "样板", "确认样", "产前样", "样版出错"]],
+  ["付款", ["付款", "尾款", "定金", "水单", "到账", "信用证", "lc", "拖欠"]],
+  ["单证", ["单证", "发票", "箱单", "提单", "产地证", "报关", "商检", "单证不符"]],
+  ["物流", ["订舱", "装柜", "清关", "报关", "货代", "仓库", "物流", "拖车", "滞留"]],
+  ["生产", ["排产", "备料", "原材料", "缺料", "工厂", "车间", "产线", "停产"]],
+  ["沟通", ["客户反馈", "客户投诉", "未回复", "确认慢", "沟通", "失联"]]
 ];
 
 const state = {
@@ -163,7 +176,8 @@ function ensureOrderShape(order) {
     order.stageNotes[stage] = {
       note: order.stageNotes[stage]?.note || "",
       reminderAt: normalizeReminderAt(order.stageNotes[stage]?.reminderAt || ""),
-      updatedAt: order.stageNotes[stage]?.updatedAt || ""
+      updatedAt: order.stageNotes[stage]?.updatedAt || "",
+      checked: order.stageNotes[stage]?.checked || false
     };
   });
   order.stage = STAGES.includes(order.stage) ? order.stage : "询盘";
@@ -172,7 +186,7 @@ function ensureOrderShape(order) {
 
 function createEmptyStageNotes() {
   return STAGES.reduce((result, stage) => {
-    result[stage] = { note: "", reminderAt: "", updatedAt: "" };
+    result[stage] = { note: "", reminderAt: "", updatedAt: "", checked: false };
     return result;
   }, {});
 }
@@ -305,23 +319,34 @@ function renderProgressChain(order) {
     if (isCurrent) classes.push("current");
     if (stage === state.selectedNode) classes.push("selected");
     if (stageIssues.length) classes.push("risk");
-    if (note.reminderAt) classes.push("remind");
+    if (note.checked) classes.push("checked");
+    if (note.reminderAt || note.note) classes.push("remind");
 
     const summary = nodeSummary(order, stage, note, stageIssues, stageActivities);
     const tooltip = nodeTooltip(order, stage, note, stageIssues, stageActivities);
     const badges = [
-      stageIssues.length ? `<span class="node-badge issue">${stageIssues.length} 问题</span>` : "",
+      stageIssues.length ? `<button class="node-badge issue goto-issue" type="button" data-stage="${stage}" data-action="goto-issue">${stageIssues.length} 问题</button>` : "",
+      note.note && !note.reminderAt ? `<span class="node-badge note-badge">备注</span>` : "",
       note.reminderAt ? `<span class="node-badge reminder">${formatReminder(note.reminderAt)}</span>` : ""
     ].join("");
+    const modifyBtn = note.checked ? `<button class="node-modify-btn" type="button" data-stage="${stage}" data-action="modify">修改</button>` : "";
 
     return `
-      <button class="${classes.join(" ")}" type="button" data-stage="${stage}">
-        <span class="node-dot">${index + 1}</span>
-        <span class="node-name">${stage}</span>
-        <span class="node-summary">${escapeHtml(summary)}</span>
-        <span class="node-badges">${badges}</span>
-        <span class="node-tooltip">${tooltip}</span>
-      </button>
+      <div class="chain-node-wrap">
+        <button class="${classes.join(" ")}" type="button" data-stage="${stage}">
+          <span class="node-dot">${index + 1}</span>
+          <span class="node-name">${stage}</span>
+          <span class="node-summary">${escapeHtml(summary)}</span>
+          <span class="node-badges">${badges}</span>
+          <span class="node-tooltip">${tooltip}</span>
+        </button>
+        <div class="node-footer">
+          <button class="node-check-btn ${note.checked ? "done" : ""}" type="button" data-stage="${stage}" data-action="check" title="${note.checked ? "已完成" : "点击完成"}">
+            ${note.checked ? "✓" : "✅"}
+          </button>
+          ${modifyBtn}
+        </div>
+      </div>
     `;
   }).join("");
 
@@ -330,6 +355,31 @@ function renderProgressChain(order) {
       state.selectedNode = node.dataset.stage;
       renderProgressChain(order);
       renderNodeEditor(order);
+    });
+  });
+
+  el.progressChain.querySelectorAll(".node-check-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleNodeChecked(order, btn.dataset.stage);
+    });
+  });
+
+  el.progressChain.querySelectorAll(".node-modify-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      modifyCheckedNode(order, btn.dataset.stage);
+    });
+  });
+
+  el.progressChain.querySelectorAll(".goto-issue").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      state.selectedNode = btn.dataset.stage;
+      renderProgressChain(order);
+      renderNodeEditor(order);
+      el.issueText.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => el.issueText.focus(), 300);
     });
   });
 }
@@ -749,6 +799,28 @@ function clearNodeReminder() {
   touch(order, `清除${stage}节点提醒`, stage);
   saveOrders();
   render();
+}
+
+function toggleNodeChecked(order, stage) {
+  ensureOrderShape(order);
+  const note = order.stageNotes[stage];
+  note.checked = !note.checked;
+  note.updatedAt = new Date().toISOString();
+  const action = note.checked ? "完成" : "重开";
+  touch(order, `${stage}节点标记为${action}`, stage);
+  saveOrders();
+  render();
+}
+
+function modifyCheckedNode(order, stage) {
+  ensureOrderShape(order);
+  order.stageNotes[stage].checked = false;
+  order.stageNotes[stage].updatedAt = new Date().toISOString();
+  state.selectedNode = stage;
+  touch(order, `修改${stage}节点，取消完成状态`, stage);
+  saveOrders();
+  render();
+  setTimeout(() => el.nodeNoteText.focus(), 100);
 }
 
 function previewWorkLog() {

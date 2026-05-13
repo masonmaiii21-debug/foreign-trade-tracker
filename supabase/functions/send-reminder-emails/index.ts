@@ -6,24 +6,22 @@ const SUPABASE_ANON_KEY = "sb_publishable_dP0ZDU3sEN5oVpoDPtA_-A_Pz4oMxtX";
 Deno.serve(async () => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
-  const fromEmail = Deno.env.get("REMINDER_FROM_EMAIL") || "Trade Tracker <onboarding@resend.dev>";
+  const fromEmail = Deno.env.get("REMINDER_FROM_EMAIL") || "跟单提醒 <onboarding@resend.dev>";
 
   if (!resendApiKey) {
     return json({ error: "Missing RESEND_API_KEY" }, 500);
   }
 
-  const now = new Date().toISOString();
   const { data: reminders, error } = await supabase
     .from("trade_reminders")
     .select("*")
-    .lte("reminder_at", now)
+    .lte("reminder_at", new Date().toISOString())
     .is("sent_at", null)
     .limit(50);
 
   if (error) return json({ error: error.message }, 500);
 
   let sent = 0;
-  const debug = { now, found: reminders?.length || 0, sent: 0, errors: [] as string[] };
 
   for (const reminder of reminders ?? []) {
     const response = await fetch("https://api.resend.com/emails", {
@@ -40,10 +38,7 @@ Deno.serve(async () => {
       }),
     });
 
-    if (!response.ok) {
-      debug.errors.push(`Resend failed for ${reminder.id}: ${response.status}`);
-      continue;
-    }
+    if (!response.ok) continue;
     await supabase
       .from("trade_reminders")
       .update({ sent_at: new Date().toISOString() })
@@ -51,8 +46,7 @@ Deno.serve(async () => {
     sent += 1;
   }
 
-  debug.sent = sent;
-  return json(debug);
+  return json({ sent });
 });
 
 function renderEmail(reminder: Record<string, string>) {

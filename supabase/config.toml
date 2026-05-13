@@ -1,5 +1,0 @@
-[functions.send-reminder-emails]
-verify_jwt = false
-
-[functions.sync-reminders]
-verify_jwt = false

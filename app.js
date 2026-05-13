@@ -1,9 +1,4 @@
 const STORAGE_KEY = "foreignTradeTracker.orders.v1";
-const CLOUD_SETTINGS_KEY = "foreignTradeTracker.cloudReminder.v1";
-const CLOUD_REMINDER_BACKEND = {
-  functionUrl: "https://lmuxnfneqmzcwoblmjzf.supabase.co/functions/v1/sync-reminders",
-  anonKey: "sb_publishable_dP0ZDU3sEN5oVpoDPtA_-A_Pz4oMxtX"
-};
 
 const STAGES = ["询盘", "报价", "寄样", "确认样", "签约", "定金", "备料", "排产", "生产", "中检", "终检", "订舱", "装柜", "报关", "出运", "交单", "结汇", "售后", "退税", "完成"];
 const STATUSES = ["进行中", "待客户", "有风险", "暂停", "已完成"];
@@ -122,13 +117,7 @@ const el = {
   alarmTitle: document.querySelector("#alarmTitle"),
   alarmContent: document.querySelector("#alarmContent"),
   snoozeAlarmBtn: document.querySelector("#snoozeAlarmBtn"),
-  dismissAlarmBtn: document.querySelector("#dismissAlarmBtn"),
-  cloudReminderEmail: document.querySelector("#cloudReminderEmail"),
-  cloudFunctionUrl: document.querySelector("#cloudFunctionUrl"),
-  cloudAnonKey: document.querySelector("#cloudAnonKey"),
-  saveCloudSettingsBtn: document.querySelector("#saveCloudSettingsBtn"),
-  syncCloudRemindersBtn: document.querySelector("#syncCloudRemindersBtn"),
-  cloudReminderStatus: document.querySelector("#cloudReminderStatus")
+  dismissAlarmBtn: document.querySelector("#dismissAlarmBtn")
 };
 
 function createId() {
@@ -218,7 +207,6 @@ function render() {
   renderMetrics();
   renderOrderList();
   renderEditor();
-  renderCloudSettings();
 }
 
 function renderMetrics() {
@@ -425,18 +413,6 @@ function renderReminders(order) {
     `;
   }).join("");
   renderFollowSummary(order);
-}
-
-function renderCloudSettings() {
-  const settings = loadCloudSettings();
-  el.cloudReminderEmail.value = settings.email || "";
-  el.cloudFunctionUrl.value = settings.functionUrl || CLOUD_REMINDER_BACKEND.functionUrl;
-  el.cloudAnonKey.value = settings.anonKey || CLOUD_REMINDER_BACKEND.anonKey;
-  const backendReady = settings.functionUrl && settings.anonKey;
-  const ready = settings.email && backendReady;
-  el.cloudReminderStatus.textContent = ready ? "已配置" : backendReady ? "待填邮箱" : "后台未配置";
-  el.syncCloudRemindersBtn.disabled = !backendReady;
-  el.syncCloudRemindersBtn.title = backendReady ? "" : "后台配置完成后可同步邮箱提醒";
 }
 
 function renderFollowSummary(order) {
@@ -1205,84 +1181,6 @@ function alarmKey(item) {
   return `alarm:${item.order.id}:${item.stage}:${item.reminderAt}`;
 }
 
-function loadCloudSettings() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(CLOUD_SETTINGS_KEY)) || {};
-    return {
-      email: saved.email || "",
-      functionUrl: CLOUD_REMINDER_BACKEND.functionUrl || saved.functionUrl || "",
-      anonKey: CLOUD_REMINDER_BACKEND.anonKey || saved.anonKey || ""
-    };
-  } catch {
-    return {
-      functionUrl: CLOUD_REMINDER_BACKEND.functionUrl,
-      anonKey: CLOUD_REMINDER_BACKEND.anonKey
-    };
-  }
-}
-
-function saveCloudSettings() {
-  const current = loadCloudSettings();
-  const settings = {
-    email: el.cloudReminderEmail.value.trim(),
-    functionUrl: CLOUD_REMINDER_BACKEND.functionUrl || current.functionUrl || el.cloudFunctionUrl.value.trim(),
-    anonKey: CLOUD_REMINDER_BACKEND.anonKey || current.anonKey || el.cloudAnonKey.value.trim()
-  };
-  if (settings.email && !isValidEmail(settings.email)) {
-    window.alert("接收邮箱格式不正确。");
-    return;
-  }
-  localStorage.setItem(CLOUD_SETTINGS_KEY, JSON.stringify(settings));
-  renderCloudSettings();
-}
-
-async function syncCloudReminders() {
-  saveCloudSettings();
-  const settings = loadCloudSettings();
-  if (!settings.email || !settings.functionUrl || !settings.anonKey) {
-    el.cloudReminderStatus.textContent = "后台未配置";
-    return;
-  }
-  const reminders = state.orders.flatMap((order) => {
-    ensureOrderShape(order);
-    return STAGES.map((stage) => {
-      const stageNote = order.stageNotes?.[stage] || {};
-      if (!stageNote.reminderAt) return null;
-      return {
-        client_id: `${order.id}:${stage}:${stageNote.reminderAt}`,
-        recipient_email: settings.email,
-        order_no: order.orderNo || "",
-        customer: order.customer || "",
-        product: order.product || "",
-        stage,
-        reminder_at: new Date(normalizeReminderAt(stageNote.reminderAt)).toISOString(),
-        note: stageNote.note || order.nextAction || "需要跟进"
-      };
-    }).filter(Boolean);
-  });
-  if (!reminders.length) {
-    window.alert("当前没有可同步的提醒。");
-    return;
-  }
-
-  el.cloudReminderStatus.textContent = "同步中";
-  try {
-    const response = await fetch(settings.functionUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${settings.anonKey}`
-      },
-      body: JSON.stringify({ reminders })
-    });
-    if (!response.ok) throw new Error(await response.text());
-    el.cloudReminderStatus.textContent = "已同步";
-  } catch (error) {
-    el.cloudReminderStatus.textContent = "同步失败";
-    window.alert(`同步失败：${error.message}`);
-  }
-}
-
 function requestNotificationPermission() {
   if (!("Notification" in window) || Notification.permission !== "default") return;
   Notification.requestPermission().catch(() => {});
@@ -1740,8 +1638,6 @@ function bindEvents() {
   el.importInput.addEventListener("change", importData);
   el.dismissAlarmBtn.addEventListener("click", dismissAlarm);
   el.snoozeAlarmBtn.addEventListener("click", snoozeAlarm);
-  el.saveCloudSettingsBtn.addEventListener("click", saveCloudSettings);
-  el.syncCloudRemindersBtn.addEventListener("click", syncCloudReminders);
   document.addEventListener("click", requestNotificationPermission, { once: true });
 }
 

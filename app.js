@@ -69,6 +69,7 @@ const el = {
   quantity: document.querySelector("#quantity"),
   weight: document.querySelector("#weight"),
   category: document.querySelector("#category"),
+  packaging: document.querySelector("#packaging"),
   amount: document.querySelector("#amount"),
   dueDate: document.querySelector("#dueDate"),
   status: document.querySelector("#status"),
@@ -160,6 +161,7 @@ function ensureOrderShape(order) {
   order.activities = Array.isArray(order.activities) ? order.activities : [];
   order.weight = order.weight || "";
   order.category = order.category || "";
+  order.packaging = order.packaging || "";
   order.stageNotes = order.stageNotes && typeof order.stageNotes === "object" ? order.stageNotes : {};
   STAGES.forEach((stage) => {
     order.stageNotes[stage] = {
@@ -277,6 +279,7 @@ function renderEditor() {
   el.quantity.value = order.quantity || "";
   el.weight.value = order.weight || "";
   el.category.value = order.category || "";
+  el.packaging.value = order.packaging || "";
   el.amount.value = order.amount || "";
   el.dueDate.value = order.dueDate || "";
   el.status.value = order.status || "进行中";
@@ -423,7 +426,8 @@ function renderFollowSummary(order) {
     order.product ? `产品：${order.product}` : "",
     order.quantity ? `数量：${order.quantity}` : "",
     order.weight ? `重量：${order.weight}` : "",
-    order.category ? `品类：${order.category}` : ""
+    order.category ? `品类：${order.category}` : "",
+    order.packaging ? `包装：${order.packaging}` : ""
   ].filter(Boolean);
 
   el.followSummary.innerHTML = `
@@ -564,6 +568,7 @@ function addOrder() {
     quantity: "",
     weight: "",
     category: "",
+    packaging: "",
     amount: "",
     dueDate: "",
     status: "进行中",
@@ -599,6 +604,7 @@ function saveOrderFromForm(event) {
     quantity: el.quantity.value.trim(),
     weight: el.weight.value.trim(),
     category: el.category.value.trim(),
+    packaging: el.packaging.value.trim(),
     amount: el.amount.value.trim(),
     dueDate: el.dueDate.value,
     status: el.status.value,
@@ -915,7 +921,8 @@ function extractOrderPatch(line) {
     ["category", /(?:品类|类别|分类|category)[:：\s]*([^,，;；\n]+)/i],
     ["quantity", /(?:数量|件数|qty|quantity)[:：\s]*([^,，;；\n]+)/i],
     ["weight", /(?:重量|毛重|净重|体积|weight|gw|nw|cbm)[:：\s]*([^,，;；\n]+)/i],
-    ["amount", /(?:金额|货值|价格|amount|value|price)[:：\s]*([^,，;；\n]+)/i]
+    ["amount", /(?:金额|货值|价格|amount|value|price)[:：\s]*([^,，;；\n]+)/i],
+    ["packaging", /(?:包装|装箱|packing|packaging)[:：\s]*([^,，;；\n]+)/i]
   ];
   fieldRules.forEach(([key, pattern]) => {
     const value = line.match(pattern)?.[1]?.trim();
@@ -1353,6 +1360,7 @@ function mapHeaderKey(header = "") {
   if (/国家|地区|目的国|country|market/.test(value)) return "country";
   if (/产品|货物|品名|product|goods|item/.test(value)) return "product";
   if (/品类|类别|分类|category/.test(value)) return "category";
+  if (/包装|装箱|packing|packaging/.test(value)) return "packaging";
   if (/数量|件数|qty|quantity/.test(value)) return "quantity";
   if (/重量|毛重|净重|体积|weight|gw|nw|cbm/.test(value)) return "weight";
   if (/金额|货值|价格|amount|value|price/.test(value)) return "amount";
@@ -1377,6 +1385,7 @@ function findOrCreateOrder(orderNo) {
     quantity: "",
     weight: "",
     category: "",
+    packaging: "",
     amount: "",
     dueDate: "",
     status: "进行中",
@@ -1404,6 +1413,7 @@ function fieldLabel(key) {
     quantity: "数量",
     weight: "重量",
     category: "品类",
+    packaging: "货物包装",
     amount: "金额",
     phone: "电话",
     email: "邮箱",

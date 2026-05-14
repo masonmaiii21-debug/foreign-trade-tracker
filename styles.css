@@ -44,15 +44,15 @@ button {
 
 .app-shell {
   display: grid;
-  grid-template-columns: minmax(320px, 390px) 1fr;
+  grid-template-columns: minmax(260px, 300px) 1fr;
   min-height: 100vh;
 }
 
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 24px;
+  gap: 12px;
+  padding: 16px;
   background: #10241d;
   color: #f7fbf9;
 }
@@ -257,7 +257,7 @@ textarea:focus {
 
 .workspace {
   min-width: 0;
-  padding: 28px;
+  padding: 16px 20px;
 }
 
 .topbar {
@@ -306,8 +306,8 @@ textarea:focus {
 
 .content-grid {
   display: grid;
-  grid-template-columns: minmax(380px, 1.2fr) minmax(320px, 0.8fr);
-  gap: 18px;
+  grid-template-columns: minmax(340px, 1.2fr) minmax(280px, 0.8fr);
+  gap: 12px;
   align-items: start;
 }
 
@@ -318,7 +318,7 @@ textarea:focus {
 .activity-panel,
 .flow-panel,
 .reminder-panel {
-  padding: 20px;
+  padding: 14px 16px;
 }
 
 .order-form {
@@ -438,29 +438,30 @@ label {
 
 .progress-chain {
   display: grid;
-  grid-template-columns: repeat(20, minmax(86px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(20, minmax(68px, 1fr));
+  gap: 6px;
   overflow-x: auto;
-  padding: 4px 2px 16px;
+  padding: 4px 2px 12px;
+  scrollbar-width: thin;
 }
 
 .chain-node-wrap {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 3px;
 }
 
 .chain-node {
   position: relative;
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: 4px;
   flex: 1;
-  min-width: 86px;
-  min-height: 118px;
+  min-width: 68px;
+  min-height: 96px;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 10px;
+  border-radius: 6px;
+  padding: 7px 8px;
   background: #fbfdfc;
   color: var(--text);
   text-align: left;
@@ -513,12 +514,13 @@ label {
 .node-dot {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: var(--surface-soft);
   color: var(--primary-dark);
   font-weight: 800;
+  font-size: 11px;
 }
 
 .chain-node.done .node-dot,
@@ -530,13 +532,14 @@ label {
 
 .node-name {
   font-weight: 800;
+  font-size: 12px;
 }
 
 .node-summary {
-  min-height: 34px;
+  min-height: 22px;
   color: var(--muted);
-  font-size: 12px;
-  line-height: 1.4;
+  font-size: 10px;
+  line-height: 1.3;
 }
 
 .node-badges {

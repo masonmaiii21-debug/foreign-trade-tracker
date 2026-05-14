@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>单证操作管理</title>
+<link rel="stylesheet" href="./styles.css" />
+<style>
+:root {
+  --ship-primary: #7b3fa3;
+  --ship-primary-dark: #5e2d7e;
+}
+.brand-mark { background: var(--ship-primary) !important; }
+.sidebar { background: #1f0d2e !important; }
+.sidebar .order-item.active, .sidebar .order-item:hover { background: rgba(123,63,163,0.45) !important; }
+.sidebar .brand p, .sidebar .order-item small, .sidebar .order-meta { color: #c9a8e0 !important; }
+.sidebar .metric span { color: #c9a8e0 !important; }
+.primary { border-color: var(--ship-primary) !important; background: var(--ship-primary) !important; }
+.primary:hover { background: var(--ship-primary-dark) !important; }
+input:focus, select:focus, textarea:focus { border-color: var(--ship-primary) !important; box-shadow: 0 0 0 3px rgba(123,63,163,0.12) !important; }
+.chain-node.done .node-dot, .chain-node.current .node-dot, .chain-node.checked .node-dot { background: var(--ship-primary) !important; }
+.chain-node.current { border-color: var(--ship-primary) !important; box-shadow: 0 0 0 3px rgba(123,63,163,0.15) !important; }
+.chain-node.done { border-color: rgba(123,63,163,0.42) !important; background: #f5eef8 !important; }
+.eyebrow { color: var(--ship-primary) !important; }
+#saveHint { color: var(--ship-primary) !important; }
+.node-badge { color: var(--ship-primary-dark) !important; }
+.follow-grid strong { color: var(--ship-primary-dark) !important; }
+.milestone-bar { display: flex; gap: 0; margin-bottom: 12px; border-radius: 8px; overflow: hidden; height: 8px; background: var(--surface-soft); }
+.milestone-done { background: var(--ship-primary); height: 100%; transition: width 0.3s; }
+.doc-priority { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; padding: 2px 7px; border-radius: 99px; font-weight: 600; }
+.doc-priority.urgent { background: #ffe8e8; color: var(--danger); }
+.doc-priority.important { background: #fff2d8; color: var(--warning); }
+.doc-priority.normal { background: #e6f7ee; color: #1f8c5c; }
+.chain-link { display: inline-block; font-size: 11px; color: var(--muted); margin-left: 4px; }
+</style>
+</head>
+<body>
+<main class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">证</div>
+      <div><h1>单证操作</h1><p>制单 → 审单 → 交单 全流程</p></div>
+    </div>
+    <div class="metrics" id="metrics"></div>
+    <div class="toolbar">
+      <button class="primary" id="newBtn" type="button">+ 新建单证任务</button>
+      <button class="ghost" id="exportBtn" type="button" title="导出数据">⇩</button>
+      <label class="ghost file-action" title="导入数据">⇧<input id="importInput" type="file" accept="application/json" /></label>
+    </div>
+    <div class="filters">
+      <input id="searchInput" type="search" placeholder="搜索订单号、客户、提单号" />
+      <select id="statusFilter"><option value="">全部状态</option></select>
+    </div>
+    <div class="order-list" id="docList"></div>
+  </aside>
+
+  <section class="workspace">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">工作台</p>
+        <h2 id="pageTitle">选择或新建单证任务</h2>
+      </div>
+      <button class="danger ghost hidden" id="deleteBtn" type="button">删除任务</button>
+    </header>
+
+    <section class="panel empty-state" id="emptyState">
+      <div><h2>开始制作第一份单证</h2><p>跟踪每一票货物的全套单证：发票、箱单、提单、产地证、保险单、银行交单。</p><button class="primary" id="emptyNewBtn" type="button">新建单证任务</button></div>
+    </section>
+
+    <section class="content-grid hidden" id="editorArea">
+      <!-- Progress Chain -->
+      <section class="panel flow-panel">
+        <div class="section-title"><h3>单证操作流程</h3><span id="stepProgress"></span></div>
+        <div class="milestone-bar"><div class="milestone-done" id="milestoneDone" style="width:0%"></div></div>
+        <div class="progress-chain" id="progressChain"></div>
+        <div class="node-editor" id="nodeEditor">
+          <div><strong id="nodeNoteTitle">步骤备注</strong><p id="nodeNoteMeta"></p></div>
+          <label>操作备注<textarea id="nodeNoteText" rows="3" placeholder="记录该步骤的单证详情、问题、客户要求等"></textarea></label>
+          <div class="alarm-picker">
+            <label>月<select id="nodeReminderMonth"></select></label><label>日<select id="nodeReminderDay"></select></label>
+            <label>时<select id="nodeReminderHour"></select></label><label>分<select id="nodeReminderMinute"></select></label>
+          </div>
+          <div class="node-actions"><button class="secondary" id="clearNodeReminderBtn" type="button">清除提醒</button><button class="primary" id="saveNodeNoteBtn" type="button">保存步骤</button></div>
+        </div>
+      </section>
+
+      <!-- Reminders + Summary -->
+      <section class="panel reminder-panel">
+        <div class="section-title"><h3>提醒</h3><span id="reminderCount"></span></div>
+        <div class="reminder-list" id="reminderList"></div>
+        <div class="follow-summary" id="followSummary"></div>
+      </section>
+
+      <!-- Task Form -->
+      <form class="panel order-form" id="taskForm">
+        <div class="section-title"><h3>单证任务信息</h3><span id="lastUpdated"></span></div>
+        <div class="form-grid">
+          <label>订单号/合同号<input id="fRef" required autocomplete="off" placeholder="例如 PI-2026-001" /></label>
+          <label>状态<select id="fStatus"></select></label>
+          <label>客户<input id="fCustomer" autocomplete="off" placeholder="客户/公司名称" /></label>
+          <label>产品/品名<input id="fProduct" autocomplete="off" placeholder="中英文品名" /></label>
+          <label>发票号<input id="fInvoiceNo" autocomplete="off" placeholder="例如 INV-2026-001" /></label>
+          <label>发票金额<input id="fInvoiceAmt" autocomplete="off" placeholder="例如 USD 12,500" /></label>
+          <label>提单号<input id="fBlNo" autocomplete="off" placeholder="例如 BL-123456" /></label>
+          <label>提单类型<select id="fBlType"><option value="original">正本提单</option><option value="telex">电放 Telex Release</option><option value="seaway">海运单 Sea Waybill</option></select></label>
+          <label>产地证类型<select id="fCooType"><option value="">无需</option><option value="CO">一般原产地证 CO</option><option value="FORM A">FORM A 普惠制</option><option value="FORM E">FORM E 东盟</option><option value="FORM F">FORM F 中智</option><option value="RCEP">RCEP</option></select></label>
+          <label>保险单号<input id="fInsurance" autocomplete="off" placeholder="保险单号" /></label>
+          <label>信用证号 (L/C)<input id="fLcNo" autocomplete="off" placeholder="如为L/C结算" /></label>
+          <label>L/C有效期<input id="fLcExpiry" type="date" /></label>
+          <label>交单银行<input id="fBank" autocomplete="off" placeholder="例如 HSBC CN" /></label>
+          <label>交单期限<input id="fDeadline" type="date" /></label>
+          <label style="grid-column:span 2;">备注<textarea id="fNotes" rows="3" placeholder="客户特殊单证要求、信用证条款注意事项等"></textarea></label>
+        </div>
+        <div class="form-actions"><button class="primary" type="submit">保存修改</button><span id="saveHint"></span></div>
+      </form>
+
+      <!-- Issues -->
+      <section class="panel issue-panel">
+        <div class="section-title"><h3>问题记录</h3><span id="issueCount"></span></div>
+        <form class="issue-form" id="issueForm"><textarea id="issueText" rows="3" placeholder="记录单证不符、数据错误、客户修改要求等问题"></textarea><div class="issue-controls"><select id="issueSeverity"><option value="一般">一般</option><option value="重要">重要</option><option value="紧急">紧急</option></select><button class="secondary" type="submit">添加问题</button></div></form>
+        <div class="issue-list" id="issueList"></div>
+      </section>
+
+      <!-- Contacts -->
+      <section class="panel contact-panel">
+        <div class="section-title"><h3>联系方式</h3><span id="contactCount"></span></div>
+        <form class="contact-form" id="contactForm"><div class="contact-grid">
+          <label>类型<select id="contactRole"><option value="客户">客户</option><option value="货代">货代</option><option value="船公司">船公司</option><option value="报关行">报关行</option><option value="银行">银行</option><option value="商会/贸促会">商会/贸促会</option><option value="保险公司">保险公司</option><option value="检验机构">检验机构</option><option value="其他">其他</option></select></label>
+          <label>姓名/备注<input id="contactNote" autocomplete="off" placeholder="联系人姓名和备注" /></label>
+          <label>电话<input id="contactPhone" autocomplete="off" inputmode="tel" placeholder="例如 13800000000" /></label>
+          <label>邮箱<input id="contactEmail" autocomplete="off" inputmode="email" placeholder="name@example.com" /></label>
+        </div><button class="secondary" type="submit">添加联系人</button></form>
+        <div class="contact-list" id="contactList"></div>
+      </section>
+
+      <!-- Activity Log -->
+      <section class="panel activity-panel"><div class="section-title"><h3>更新记录</h3><span id="activityCount"></span></div><div class="activity-list" id="activityList"></div></section>
+    </section>
+  </section>
+</main>
+
+<template id="itemTemplate">
+  <button class="order-item" type="button"><span class="order-main"><strong></strong><small></small><span style="font-size:10px;margin-top:2px;display:flex;gap:8px;"></span></span><span class="order-meta"></span></button>
+</template>
+<template id="issueTemplate">
+  <article class="issue-item"><div><span class="severity"></span><p></p><small></small></div><div class="issue-actions"><button class="ghost close-issue" type="button" title="解决/重开">✓</button><button class="ghost delete-issue" type="button" title="删除问题">×</button></div></article>
+</template>
+
+<script>
+const STEPS = [
+  { id:'01', name:'确认单证要求', desc:'与客户确认全套单证要求：正本/电放、产地证类型、是否需要保险、使馆认证等' },
+  { id:'02', name:'制作装箱单', desc:'根据实际装箱情况制作Packing List：件数、毛重、净重、体积、箱号' },
+  { id:'03', name:'制作商业发票', desc:'制作Commercial Invoice：品名、HS编码、单价、总金额、贸易术语、付款条款' },
+  { id:'04', name:'核对合同条款', desc:'对照Sales Contract逐条核对：货描、数量、金额、交货期、付款方式、单证要求' },
+  { id:'05', name:'制作报关委托书', desc:'填写并盖章报关委托书/代理报关委托协议' },
+  { id:'06', name:'填写申报要素', desc:'填写海关申报要素表：品牌类型、用途、材质、功能、原理等' },
+  { id:'07', name:'申请产地证', desc:'向贸促会/商检局申请原产地证CO或优惠产地证FORM系列' },
+  { id:'08', name:'办理保险单', desc:'向保险公司投保海运一切险，获取Insurance Policy/Certificate' },
+  { id:'09', name:'安排商检/检验', desc:'如需要SGS/BV/CCIC等第三方检验，安排检验并获取检验证书' },
+  { id:'10', name:'确认提单草稿', desc:'核对MBL/HBL草稿：Shipper/Consignee/Notify Party/货描/件重尺/运费条款' },
+  { id:'11', name:'核对正本提单', desc:'收到正本提单后逐项核对：背书是否正确、签单章是否完整、日期是否一致' },
+  { id:'12', name:'办理使馆认证', desc:'如目的国要求，将商业发票/产地证等送交使馆/领事馆办理认证' },
+  { id:'13', name:'准备全套交单文件', desc:'按信用证或合同要求整理全套单据：发票+箱单+提单+产地证+保险单+检验证+汇票' },
+  { id:'14', name:'提交银行议付', desc:'将全套单据递交银行审核议付（L/C方式）或寄送客户（T/T方式）' },
+  { id:'15', name:'跟踪收汇/归档', desc:'跟踪客户付款/银行收汇状态，全套单证扫描归档备查' }
+];
+
+const STATUSES = ['进行中','单据确认中','待客户确认','已交单','已收汇','已完成'];
+const STORAGE_KEY = 'docsOps.tasks.v1';
+const state = { tasks: [], selectedId: null, selectedNode: null };
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const now = () => new Date().toISOString();
+const nowText = () => new Date().toLocaleString('zh-CN',{hour12:false});
+const esc = s => { const m={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}; return String(s||'').replace(/[&<>"']/g,c=>m[c]); };
+const fmt = v => v?new Date(v).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}):'';
+function formatReminder(v) { if(!v)return'';const d=new Date(v);if(isNaN(d.getTime()))return String(v);return d.toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}); }
+function selected() { return state.tasks.find(t=>t.id===state.selectedId)||null; }
+
+function initTask(t) {
+  t.status = STATUSES.includes(t.status)?t.status:'进行中';
+  t.steps = t.steps||{}; STEPS.forEach(s=>{t.steps[s.id]=t.steps[s.id]||{status:'pending',date:'',note:''};});
+  t.issues=Array.isArray(t.issues)?t.issues:[]; t.contacts=Array.isArray(t.contacts)?t.contacts:[];
+  t.activities=Array.isArray(t.activities)?t.activities:[];
+  t.ref=t.ref||'';t.customer=t.customer||'';t.product=t.product||'';t.invoiceNo=t.invoiceNo||'';
+  t.invoiceAmt=t.invoiceAmt||'';t.blNo=t.blNo||'';t.blType=t.blType||'original';
+  t.cooType=t.cooType||'';t.insurance=t.insurance||'';t.lcNo=t.lcNo||'';
+  t.lcExpiry=t.lcExpiry||'';t.bank=t.bank||'';t.deadline=t.deadline||'';t.notes=t.notes||'';
+  return t;
+}
+
+function load(){try{state.tasks=JSON.parse(localStorage.getItem(STORAGE_KEY))||[];}catch{state.tasks=[];}state.tasks.forEach(initTask);state.selectedId=state.tasks[0]?.id||null;}
+function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state.tasks));}
+
+function populateSelects(){
+  document.querySelector('#statusFilter').innerHTML='<option value="">全部状态</option>'+STATUSES.map(s=>`<option value="${s}">${s}</option>`).join('');
+  document.querySelector('#fStatus').innerHTML=STATUSES.map(s=>`<option value="${s}">${s}</option>`).join('');
+  ['nodeReminderMonth','nodeReminderDay','nodeReminderHour','nodeReminderMinute'].forEach((id,i)=>{
+    const el=document.querySelector('#'+id);if(!el)return;
+    if(i===0)el.innerHTML='<option value="">月</option>'+Array.from({length:12},(_,x)=>`<option value="${x+1}">${x+1}月</option>`).join('');
+    if(i===1)el.innerHTML='<option value="">日</option>'+Array.from({length:31},(_,x)=>`<option value="${x+1}">${x+1}日</option>`).join('');
+    if(i===2)el.innerHTML='<option value="">时</option>'+Array.from({length:24},(_,x)=>`<option value="${String(x).padStart(2,'0')}">${String(x).padStart(2,'0')}时</option>`).join('');
+    if(i===3)el.innerHTML='<option value="">分</option>'+Array.from({length:60},(_,x)=>`<option value="${String(x).padStart(2,'0')}">${String(x).padStart(2,'0')}分</option>`).join('');
+  });
+}
+
+function renderList(){
+  const q=(document.querySelector('#searchInput')?.value||'').trim().toLowerCase();
+  const st=document.querySelector('#statusFilter')?.value||'';
+  const list=document.querySelector('#docList');
+  const filtered=state.tasks.filter(t=>!st||t.status===st).filter(t=>!q||[t.ref,t.customer,t.product,t.blNo,t.invoiceNo].join(' ').toLowerCase().includes(q)).sort((a,b)=>new Date(b.updatedAt||0)-new Date(a.updatedAt||0));
+  if(!list)return;
+  const done=t=>Object.values(t.steps||{}).filter(v=>v.status==='done').length;
+  if(!filtered.length){list.innerHTML='<div class="order-item"><span>暂无匹配任务</span></div>';return;}
+  const tpl=document.querySelector('#itemTemplate');
+  list.innerHTML='';
+  filtered.forEach(t=>{
+    const n=tpl.content.firstElementChild.cloneNode(true);
+    n.classList.toggle('active',t.id===state.selectedId);
+    n.querySelector('strong').textContent=t.ref||'未填订单号';
+    n.querySelector('small').textContent=`${t.customer||''} · ${t.product||''}`;
+    n.querySelector('.order-main span:last-child').textContent=`${done(t)}/${STEPS.length}步 · ${t.blNo||'未填提单号'}`;
+    n.querySelector('.order-meta').textContent=`${t.status||''}`;
+    n.addEventListener('click',()=>{state.selectedId=t.id;state.selectedNode=null;renderAll();});
+    list.appendChild(n);
+  });
+}
+
+function renderMetrics(){
+  const el=document.querySelector('#metrics');if(!el)return;
+  const active=state.tasks.filter(t=>t.status==='进行中'||t.status==='单据确认中').length;
+  const submitted=state.tasks.filter(t=>t.status==='已交单').length;
+  const settled=state.tasks.filter(t=>t.status==='已收汇'||t.status==='已完成').length;
+  el.innerHTML=[['处理中',active],['已交单',submitted],['已收汇',settled]].map(([l,v])=>`<div class="metric"><strong>${v}</strong><span>${l}</span></div>`).join('');
+}
+
+function renderProcessChain(){
+  const t=selected();if(!t)return;
+  const steps=t.steps||{};
+  const doneCnt=Object.values(steps).filter(v=>v.status==='done').length;
+  document.querySelector('#stepProgress').textContent=`${doneCnt}/${STEPS.length} 已完成`;
+  document.querySelector('#milestoneDone').style.width=(doneCnt/STEPS.length*100)+'%';
+  const chain=document.querySelector('#progressChain');if(!chain)return;
+  chain.innerHTML=STEPS.map((st,i)=>{
+    const step=steps[st.id]||{status:'pending',date:'',note:''};
+    let cls='chain-node';
+    if(step.status==='done')cls+=' done';
+    if(step.status==='problem')cls+=' risk';
+    if(state.selectedNode===st.id)cls+=' selected current';
+    return`<div class="chain-node-wrap"><button class="${cls}" type="button" data-step="${st.id}"><span class="node-dot">${i+1}</span><span class="node-name">${st.name}</span><span class="node-summary">${step.date?step.date.slice(0,10):(step.status==='done'?'✓':'待处理')}</span>${step.note?`<span class="node-badges"><span class="node-badge note-badge">备注</span></span>`:''}</button></div>`;
+  }).join('');
+  chain.querySelectorAll('.chain-node').forEach(b=>b.addEventListener('click',()=>{state.selectedNode=b.dataset.step;renderProcessChain();renderNodeEditor();}));
+}
+
+function renderNodeEditor(){
+  const t=selected();if(!t)return;
+  const ed=document.querySelector('#nodeEditor');
+  if(!state.selectedNode){ed.style.display='none';return;}
+  ed.style.display='grid';
+  const step=t.steps[state.selectedNode]||{status:'pending',date:'',note:''};
+  const def=STEPS.find(x=>x.id===state.selectedNode);
+  document.querySelector('#nodeNoteTitle').textContent=def?.name||'';
+  document.querySelector('#nodeNoteMeta').textContent=def?.desc||'';
+  document.querySelector('#nodeNoteText').value=step.note||'';
+  if(step.date){const d=new Date(step.date);document.querySelector('#nodeReminderMonth').value=d.getMonth()+1;document.querySelector('#nodeReminderDay').value=d.getDate();document.querySelector('#nodeReminderHour').value=String(d.getHours()).padStart(2,'0');document.querySelector('#nodeReminderMinute').value=String(d.getMinutes()).padStart(2,'0');}
+}
+
+function renderAll(){
+  const t=selected();
+  document.querySelector('#emptyState').classList.toggle('hidden',!!t);
+  document.querySelector('#editorArea').classList.toggle('hidden',!t);
+  document.querySelector('#deleteBtn').classList.toggle('hidden',!t);
+  document.querySelector('#pageTitle').textContent=t?`${t.ref||'未填'} · ${t.customer||''} ${t.blNo||''}`:'选择或新建单证任务';
+  if(!t){renderList();renderMetrics();return;}
+  document.querySelector('#fRef').value=t.ref||'';document.querySelector('#fStatus').value=t.status||'进行中';
+  document.querySelector('#fCustomer').value=t.customer||'';document.querySelector('#fProduct').value=t.product||'';
+  document.querySelector('#fInvoiceNo').value=t.invoiceNo||'';document.querySelector('#fInvoiceAmt').value=t.invoiceAmt||'';
+  document.querySelector('#fBlNo').value=t.blNo||'';document.querySelector('#fBlType').value=t.blType||'original';
+  document.querySelector('#fCooType').value=t.cooType||'';document.querySelector('#fInsurance').value=t.insurance||'';
+  document.querySelector('#fLcNo').value=t.lcNo||'';document.querySelector('#fLcExpiry').value=t.lcExpiry||'';
+  document.querySelector('#fBank').value=t.bank||'';document.querySelector('#fDeadline').value=t.deadline||'';document.querySelector('#fNotes').value=t.notes||'';
+  document.querySelector('#lastUpdated').textContent=`更新于 ${fmt(t.updatedAt)}`;
+  renderProcessChain();renderNodeEditor();renderReminders(t);renderIssues(t);renderContacts(t);renderActivities(t);renderList();renderMetrics();
+}
+
+function renderReminders(t){
+  const rems=STEPS.map(s=>({stage:s.name,reminderAt:t.steps[s.id]?.date||'',note:t.steps[s.id]?.note||''})).filter(r=>r.reminderAt);
+  document.querySelector('#reminderCount').textContent=rems.length?`${rems.length} 条`:'无';
+  const rl=document.querySelector('#reminderList');
+  if(!rems.length){rl.innerHTML='<div class="reminder-item">暂无提醒</div>';}else{rems.sort((a,b)=>a.reminderAt.localeCompare(b.reminderAt));rl.innerHTML=rems.map(r=>`<article class="reminder-item"><strong>${esc(r.stage)} · ${formatReminder(r.reminderAt)}</strong><span>${esc(r.note||'需跟进')}</span></article>`).join('');}
+  const fs=document.querySelector('#followSummary');if(!fs)return;
+  const open=(t.issues||[]).filter(i=>i.status!=='已解决');const p=(t.contacts||[])[0];
+  fs.innerHTML=`<div class="follow-grid"><article><strong>当前状态</strong><span>${esc(t.status||'进行中')} · ${t.blNo||'未填提单号'}</span></article><article><strong>交单期限</strong><span>${t.deadline||'未设置'}</span></article><article><strong>问题</strong><span>${open.length?open.length+'个未解决':'暂无'}</span></article><article><strong>联系人</strong><span>${p?`${p.role} ${p.name||''} ${p.phone||''}`:'暂无'}</span></article></div><div class="goods-strip"><span>${esc(t.customer||'未填客户')}</span><span>${esc(t.invoiceNo||'未填发票号')}</span><span>${esc(t.blType==='original'?'正本提单':t.blType==='telex'?'电放':'SEAWAY')}</span><span>${esc(t.cooType||'无产地证')}</span></div>`;
+}
+
+function renderIssues(t){
+  const open=(t.issues||[]).filter(i=>i.status!=='已解决').length;
+  document.querySelector('#issueCount').textContent=`${open} 个未解决`;
+  const il=document.querySelector('#issueList');if(!il)return;
+  if(!t.issues?.length){il.innerHTML='<div class="issue-item"><p>暂无问题记录</p></div>';return;}
+  const tpl=document.querySelector('#issueTemplate');il.innerHTML='';
+  t.issues.slice().sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt)).forEach(i=>{
+    const n=tpl.content.firstElementChild.cloneNode(true);n.classList.toggle('resolved',i.status==='已解决');
+    const s=n.querySelector('.severity');s.textContent=`${i.category||'单证'} · ${i.severity} · ${i.status}`;s.classList.add(i.severity);
+    n.querySelector('p').textContent=i.text;n.querySelector('small').textContent=`创建 ${fmt(i.createdAt)} · 更新 ${fmt(i.updatedAt)}`;
+    n.querySelector('.close-issue').addEventListener('click',()=>toggleIssue(i.id));
+    n.querySelector('.delete-issue').addEventListener('click',()=>deleteIssue(i.id));
+    il.appendChild(n);
+  });
+}
+function addIssue(e){e.preventDefault();const t=selected();if(!t)return;const tx=document.querySelector('#issueText').value.trim();if(!tx)return;const ca=now();t.issues.push({id:uid(),text:tx,severity:document.querySelector('#issueSeverity').value,category:'单证',status:'未解决',createdAt:ca,updatedAt:ca});t.updatedAt=ca;save();document.querySelector('#issueText').value='';renderAll();}
+function toggleIssue(id){const t=selected();const i=t?.issues?.find(x=>x.id===id);if(!i)return;i.status=i.status==='已解决'?'未解决':'已解决';i.updatedAt=now();t.updatedAt=now();save();renderAll();}
+function deleteIssue(id){const t=selected();if(!t)return;t.issues=t.issues.filter(x=>x.id!==id);t.updatedAt=now();save();renderAll();}
+
+function renderContacts(t){
+  const cs=t.contacts||[];document.querySelector('#contactCount').textContent=cs.length?`${cs.length} 个`:'无';
+  const cl=document.querySelector('#contactList');if(!cl)return;
+  if(!cs.length){cl.innerHTML='<div class="contact-item"><p>暂无联系方式</p></div>';return;}
+  cl.innerHTML=cs.map(c=>`<article class="contact-item"><div><strong>${esc(c.role||'其他')}${c.name?` · ${esc(c.name)}`:''}</strong><p>📞 ${esc(c.phone||'未填')} ✉ ${esc(c.email||'未填')}</p></div><div class="contact-actions"><button class="ghost" onclick="deleteContact('${c.id}')">×</button></div></article>`).join('');
+}
+function addContact(e){e.preventDefault();const t=selected();if(!t)return;const ph=document.querySelector('#contactPhone').value.trim();const em=document.querySelector('#contactEmail').value.trim();if(!ph&&!em){alert('请至少填写电话或邮箱');return;}const ca=now();t.contacts.push({id:uid(),role:document.querySelector('#contactRole').value,name:document.querySelector('#contactNote').value.trim(),phone:ph,email:em,createdAt:ca,updatedAt:ca});t.updatedAt=ca;save();document.querySelector('#contactNote').value='';document.querySelector('#contactPhone').value='';document.querySelector('#contactEmail').value='';renderAll();}
+function deleteContact(id){const t=selected();if(!t)return;t.contacts=t.contacts.filter(x=>x.id!==id);t.updatedAt=now();save();renderAll();}
+
+function renderActivities(t){
+  const a=t.activities||[];document.querySelector('#activityCount').textContent=`${a.length} 条`;
+  document.querySelector('#activityList').innerHTML=a.length?a.slice().reverse().map(x=>`<article class="activity-item"><p>${esc(x.text)}</p><small>${fmt(x.createdAt)}</small></article>`).join(''):'<div class="activity-item"><p>暂无记录</p></div>';
+}
+
+function addTask(){
+  const ca=now();const t=initTask({id:uid(),ref:`DOC-${new Date().getFullYear()}-${String(state.tasks.length+1).padStart(3,'0')}`,createdAt:ca,updatedAt:ca});
+  t.activities.push({id:uid(),text:'新建单证任务',createdAt:ca});state.tasks.unshift(t);state.selectedId=t.id;save();renderAll();document.querySelector('#fRef')?.focus();
+}
+function saveTask(e){e.preventDefault();const t=selected();if(!t)return;const g=id=>document.querySelector(id)?.value||'';Object.assign(t,{ref:g('#fRef'),status:g('#fStatus'),customer:g('#fCustomer'),product:g('#fProduct'),invoiceNo:g('#fInvoiceNo'),invoiceAmt:g('#fInvoiceAmt'),blNo:g('#fBlNo'),blType:g('#fBlType'),cooType:g('#fCooType'),insurance:g('#fInsurance'),lcNo:g('#fLcNo'),lcExpiry:g('#fLcExpiry'),bank:g('#fBank'),deadline:g('#fDeadline'),notes:g('#fNotes'),updatedAt:now()});t.activities.push({id:uid(),text:'更新单证任务信息',createdAt:now()});save();renderAll();document.querySelector('#saveHint').textContent=`已保存 ${nowText()}`;setTimeout(()=>document.querySelector('#saveHint').textContent='',2200);}
+function deleteTask(){const t=selected();if(!t)return;if(!confirm(`确定删除 ${t.ref||'未填'}？`))return;state.tasks=state.tasks.filter(x=>x.id!==t.id);state.selectedId=state.tasks[0]?.id||null;save();renderAll();}
+
+function saveNode(){
+  const t=selected();if(!t||!state.selectedNode)return;
+  const st=t.steps[state.selectedNode];st.note=document.querySelector('#nodeNoteText').value.trim();
+  const m=document.querySelector('#nodeReminderMonth').value,d=document.querySelector('#nodeReminderDay').value;
+  const h=document.querySelector('#nodeReminderHour').value||'09',min=document.querySelector('#nodeReminderMinute').value||'00';
+  if(m&&d){const y=new Date().getFullYear();st.date=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}T${h}:${min}`;}
+  if(st.status==='pending')st.status='done';st.updatedAt=now();t.updatedAt=now();
+  t.activities.push({id:uid(),text:`更新步骤：${STEPS.find(x=>x.id===state.selectedNode)?.name||''} → ${st.status==='done'?'已完成':'已备注'}`,createdAt:now()});
+  save();state.selectedNode=null;document.querySelector('#nodeEditor').style.display='none';renderAll();
+}
+function clearNodeReminder(){const t=selected();if(!t||!state.selectedNode)return;t.steps[state.selectedNode].date='';t.steps[state.selectedNode].updatedAt=now();t.updatedAt=now();save();renderAll();}
+function exportData(){const b=new Blob([JSON.stringify(state.tasks,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`单证操作-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(a.href);}
+function importData(e){const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d))throw new Error('格式错误');state.tasks=d;d.forEach(initTask);state.selectedId=state.tasks[0]?.id||null;save();renderAll();}catch(ex){alert('导入失败：'+ex.message);}};r.readAsText(f);e.target.value='';}
+
+function bind(){
+  document.querySelector('#newBtn')?.addEventListener('click',addTask);document.querySelector('#emptyNewBtn')?.addEventListener('click',addTask);
+  document.querySelector('#deleteBtn')?.addEventListener('click',deleteTask);document.querySelector('#taskForm')?.addEventListener('submit',saveTask);
+  document.querySelector('#issueForm')?.addEventListener('submit',addIssue);document.querySelector('#contactForm')?.addEventListener('submit',addContact);
+  document.querySelector('#saveNodeNoteBtn')?.addEventListener('click',saveNode);document.querySelector('#clearNodeReminderBtn')?.addEventListener('click',clearNodeReminder);
+  document.querySelector('#searchInput')?.addEventListener('input',renderList);document.querySelector('#statusFilter')?.addEventListener('change',renderList);
+  document.querySelector('#exportBtn')?.addEventListener('click',exportData);document.querySelector('#importInput')?.addEventListener('change',importData);
+}
+
+populateSelects();load();bind();renderAll();
+</script>
+</body>
+</html>

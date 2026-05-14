@@ -55,20 +55,6 @@ window.pdfjsLib = pdfjsLib;
     <section class="content-grid hidden" id="orderEditor">
       <!-- ===== MODULE: 外贸跟单 ===== -->
       <section class="module-panel active" id="module-trade">
-        <section class="panel flow-panel">
-          <div class="section-title"><h3>跟单进度链</h3><span>悬浮看详情，点击编辑备注和提醒</span></div>
-          <div class="progress-chain" id="progressChain"></div>
-          <div class="node-editor" id="nodeEditor">
-            <div><strong id="nodeNoteTitle">节点备注</strong><p id="nodeNoteMeta"></p></div>
-            <label>节点备注<textarea id="nodeNoteText" rows="3" placeholder="记录该节点的具体情况、客户要求、供应商反馈等"></textarea></label>
-            <div class="alarm-picker">
-              <label>月<select id="nodeReminderMonth"></select></label><label>日<select id="nodeReminderDay"></select></label>
-              <label>时<select id="nodeReminderHour"></select></label><label>分<select id="nodeReminderMinute"></select></label>
-            </div>
-            <div class="node-actions"><button class="secondary" id="clearNodeReminderBtn" type="button">清除提醒</button><button class="primary" id="saveNodeNoteBtn" type="button">保存节点</button></div>
-          </div>
-        </section>
-
         <section class="panel order-form" id="orderFormPanel">
           <div class="section-title"><h3>订单信息</h3><span id="lastUpdated"></span></div>
           <form class="form-grid" id="orderForm">
@@ -88,6 +74,20 @@ window.pdfjsLib = pdfjsLib;
             <label style="grid-column:span 2;">备注<textarea id="notes" rows="2" placeholder="付款条款、包装要求、客户偏好等"></textarea></label>
           </form>
           <div class="form-actions"><button class="primary" type="submit" id="saveOrderBtn">保存修改</button><span id="saveHint"></span></div>
+        </section>
+
+        <section class="panel flow-panel">
+          <div class="section-title"><h3>跟单进度链</h3><span>悬浮看详情，点击编辑备注和提醒</span></div>
+          <div class="progress-chain" id="progressChain"></div>
+          <div class="node-editor" id="nodeEditor">
+            <div><strong id="nodeNoteTitle">节点备注</strong><p id="nodeNoteMeta"></p></div>
+            <label>节点备注<textarea id="nodeNoteText" rows="3" placeholder="记录该节点的具体情况、客户要求、供应商反馈等"></textarea></label>
+            <div class="alarm-picker">
+              <label>月<select id="nodeReminderMonth"></select></label><label>日<select id="nodeReminderDay"></select></label>
+              <label>时<select id="nodeReminderHour"></select></label><label>分<select id="nodeReminderMinute"></select></label>
+            </div>
+            <div class="node-actions"><button class="secondary" id="clearNodeReminderBtn" type="button">清除提醒</button><button class="primary" id="saveNodeNoteBtn" type="button">保存节点</button></div>
+          </div>
         </section>
 
         <section class="panel reminder-panel"><div class="section-title"><h3>提醒</h3><span id="reminderCount"></span></div><div class="reminder-list" id="reminderList"></div><div class="follow-summary" id="followSummary"></div></section>

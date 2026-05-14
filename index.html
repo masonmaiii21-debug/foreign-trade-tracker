@@ -1,228 +1,347 @@
 <!doctype html>
 <html lang="zh-CN">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>外贸跟单记录工具</title>
-<link rel="stylesheet" href="./styles.css" />
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script type="module">
-import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs";
-window.pdfjsLib = pdfjsLib;
-</script>
-<script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
-</head>
-<body>
-<main class="app-shell">
-  <aside class="sidebar">
-    <div class="brand">
-      <div class="brand-mark">单</div>
-      <div><h1>外贸跟单</h1><p>全流程操作管理</p></div>
-    </div>
-    <div class="metrics" id="metrics"></div>
-    <div class="toolbar">
-      <button class="primary" id="newOrderBtn" type="button">+ 新订单</button>
-      <button class="ghost" id="exportBtn" type="button" title="导出数据">⇩</button>
-      <label class="ghost file-action" title="导入数据">⇧<input id="importInput" type="file" accept="application/json" /></label>
-    </div>
-    <div class="filters">
-      <input id="searchInput" type="search" placeholder="搜索订单号、客户、产品" />
-      <select id="statusFilter"><option value="">全部状态</option></select>
-    </div>
-    <div class="order-list" id="orderList"></div>
-  </aside>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>外贸跟单记录工具</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script type="module">
+      import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs";
+      window.pdfjsLib = pdfjsLib;
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">单</div>
+          <div>
+            <h1>外贸跟单</h1>
+            <p>订单进度与问题记录</p>
+          </div>
+        </div>
 
-  <section class="workspace">
-    <header class="topbar">
-      <div>
-        <p class="eyebrow">工作台</p>
-        <h2 id="pageTitle">选择或新建订单</h2>
-      </div>
-      <div class="module-tabs" id="moduleTabs">
-        <button class="m-tab active" data-module="trade">📋 外贸跟单</button>
-        <button class="m-tab" data-module="shipping">🚢 海运操作</button>
-        <button class="m-tab" data-module="docs">📄 单证操作</button>
-        <button class="m-tab" data-module="customs">🛃 报关操作</button>
-      </div>
-      <button class="danger ghost hidden" id="deleteOrderBtn" type="button">删除订单</button>
-    </header>
+        <div class="metrics" id="metrics"></div>
 
-    <!-- Empty State -->
-    <section class="panel empty-state" id="emptyState">
-      <div><h2>开始记录第一单</h2><p>把订单号、客户、产品、当前阶段和问题放在同一个地方，后续可通过工作日志批量更新。</p><button class="primary" id="emptyNewOrderBtn" type="button">新建订单</button></div>
-    </section>
+        <div class="toolbar">
+          <button class="primary" id="newOrderBtn" type="button">+ 新订单</button>
+          <button class="ghost" id="exportBtn" type="button" title="导出数据">⇩</button>
+          <label class="ghost file-action" title="导入数据">
+            ⇧
+            <input id="importInput" type="file" accept="application/json" />
+          </label>
+        </div>
 
-    <section class="content-grid hidden" id="orderEditor">
-      <!-- ===== MODULE: 外贸跟单 ===== -->
-      <section class="module-panel active" id="module-trade">
-        <section class="panel order-form" id="orderFormPanel">
-          <div class="section-title"><h3>订单信息</h3><span id="lastUpdated"></span></div>
-          <form class="form-grid" id="orderForm">
-            <label>订单号<input id="orderNo" required autocomplete="off" placeholder="例如 PI-2026-001" /></label>
-            <label>客户<input id="customer" autocomplete="off" placeholder="客户或公司名称" /></label>
-            <label>国家/地区<input id="country" autocomplete="off" placeholder="例如 Germany" /></label>
-            <label>产品<input id="product" autocomplete="off" placeholder="产品名称" /></label>
-            <label>数量<input id="quantity" autocomplete="off" placeholder="例如 2000 pcs" /></label>
-            <label>重量<input id="weight" autocomplete="off" placeholder="例如 560 kg / 1.2 CBM" /></label>
-            <label>品类<input id="category" autocomplete="off" placeholder="例如 家居用品 / 五金" /></label>
-            <label>货物包装<input id="packaging" autocomplete="off" placeholder="例如 纸箱 / 托盘 / 散装" /></label>
-            <label>金额<input id="amount" autocomplete="off" placeholder="例如 USD 12,500" /></label>
-            <label>交期<input id="dueDate" type="date" /></label>
-            <label>状态<select id="status"></select></label>
-            <label>当前进度<select id="stage"></select></label>
-            <label>下一步<input id="nextAction" autocomplete="off" placeholder="例如 等客户确认唛头" /></label>
-            <label style="grid-column:span 2;">备注<textarea id="notes" rows="2" placeholder="付款条款、包装要求、客户偏好等"></textarea></label>
-          </form>
-          <div class="form-actions"><button class="primary" type="submit" id="saveOrderBtn">保存修改</button><span id="saveHint"></span></div>
+        <div class="filters">
+          <input id="searchInput" type="search" placeholder="搜索订单号、客户、产品" />
+          <select id="statusFilter">
+            <option value="">全部状态</option>
+          </select>
+        </div>
+
+        <div class="order-list" id="orderList"></div>
+      </aside>
+
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">工作台</p>
+            <h2 id="pageTitle">选择或新建订单</h2>
+          </div>
+          <button class="danger ghost hidden" id="deleteOrderBtn" type="button">删除订单</button>
+        </header>
+
+        <section class="panel empty-state" id="emptyState">
+          <div>
+            <h2>开始记录第一单</h2>
+            <p>把订单号、客户、产品、当前阶段和问题放在同一个地方，后续可通过工作日志批量更新。</p>
+            <button class="primary" id="emptyNewOrderBtn" type="button">新建订单</button>
+          </div>
         </section>
 
-        <section class="panel flow-panel">
-          <div class="section-title"><h3>跟单进度链</h3><span>悬浮看详情，点击编辑备注和提醒</span></div>
-          <div class="progress-chain" id="progressChain"></div>
-          <div class="node-editor" id="nodeEditor">
-            <div><strong id="nodeNoteTitle">节点备注</strong><p id="nodeNoteMeta"></p></div>
-            <label>节点备注<textarea id="nodeNoteText" rows="3" placeholder="记录该节点的具体情况、客户要求、供应商反馈等"></textarea></label>
-            <div class="alarm-picker">
-              <label>月<select id="nodeReminderMonth"></select></label><label>日<select id="nodeReminderDay"></select></label>
-              <label>时<select id="nodeReminderHour"></select></label><label>分<select id="nodeReminderMinute"></select></label>
+        <section class="content-grid hidden" id="orderEditor">
+          <section class="panel flow-panel">
+            <div class="section-title">
+              <h3>订单链路</h3>
+              <span>悬浮看详情，点击节点编辑备注和提醒</span>
             </div>
-            <div class="node-actions"><button class="secondary" id="clearNodeReminderBtn" type="button">清除提醒</button><button class="primary" id="saveNodeNoteBtn" type="button">保存节点</button></div>
-          </div>
-        </section>
+            <div class="progress-chain" id="progressChain"></div>
+            <div class="node-editor" id="nodeEditor">
+              <div>
+                <strong id="nodeNoteTitle">节点备注</strong>
+                <p id="nodeNoteMeta"></p>
+              </div>
+              <label>
+                节点备注
+                <textarea id="nodeNoteText" rows="3" placeholder="记录该节点的具体情况、客户要求、供应商反馈等"></textarea>
+              </label>
+              <div class="alarm-picker" aria-label="提醒时间选择">
+                <label>
+                  月
+                  <select id="nodeReminderMonth"></select>
+                </label>
+                <label>
+                  日
+                  <select id="nodeReminderDay"></select>
+                </label>
+                <label>
+                  时
+                  <select id="nodeReminderHour"></select>
+                </label>
+                <label>
+                  分
+                  <select id="nodeReminderMinute"></select>
+                </label>
+              </div>
+              <div class="node-actions">
+                <button class="secondary" id="clearNodeReminderBtn" type="button">清除提醒</button>
+                <button class="primary" id="saveNodeNoteBtn" type="button">保存节点</button>
+              </div>
+            </div>
+          </section>
 
-        <section class="panel reminder-panel"><div class="section-title"><h3>提醒</h3><span id="reminderCount"></span></div><div class="reminder-list" id="reminderList"></div><div class="follow-summary" id="followSummary"></div></section>
+          <section class="panel reminder-panel">
+            <div class="section-title">
+              <h3>提醒</h3>
+              <span id="reminderCount"></span>
+            </div>
+            <div class="reminder-list" id="reminderList"></div>
+            <div class="follow-summary" id="followSummary"></div>
+          </section>
 
-        <section class="panel issue-panel"><div class="section-title"><h3>问题记录</h3><span id="issueCount"></span></div>
-          <form class="issue-form" id="issueForm"><textarea id="issueText" rows="3" placeholder="记录质量、交期、付款、单证、沟通等问题"></textarea><div class="issue-controls"><select id="issueSeverity"><option value="一般">一般</option><option value="重要">重要</option><option value="紧急">紧急</option></select><button class="secondary" type="submit">添加问题</button></div></form>
-          <div class="issue-list" id="issueList"></div>
-        </section>
+          <form class="panel order-form" id="orderForm">
+            <div class="section-title">
+              <h3>订单信息</h3>
+              <span id="lastUpdated"></span>
+            </div>
 
-        <section class="panel contact-panel"><div class="section-title"><h3>联系方式</h3><span id="contactCount"></span></div>
-          <form class="contact-form" id="contactForm"><div class="contact-grid">
-            <label>类型<select id="contactRole"><option value="工厂">工厂</option><option value="货主">货主</option><option value="货代">货代</option><option value="其他">其他</option></select></label>
-            <label>姓名/备注<input id="contactNote" autocomplete="off" placeholder="例如 张经理 / 订舱联系人" /></label>
-            <label>国家/地区区号<select id="contactDialCode"><option value="+86">中国 +86</option><option value="+852">中国香港 +852</option><option value="+1">美国/加拿大 +1</option><option value="+44">英国 +44</option><option value="+49">德国 +49</option><option value="+33">法国 +33</option><option value="+39">意大利 +39</option><option value="+34">西班牙 +34</option><option value="+31">荷兰 +31</option><option value="+81">日本 +81</option><option value="+82">韩国 +82</option><option value="+65">新加坡 +65</option><option value="+60">马来西亚 +60</option><option value="+66">泰国 +66</option><option value="+84">越南 +84</option><option value="+62">印尼 +62</option><option value="+91">印度 +91</option><option value="+971">阿联酋 +971</option><option value="+7">俄罗斯 +7</option><option value="+55">巴西 +55</option><option value="+52">墨西哥 +52</option><option value="custom">其他，自定义区号</option></select><input class="hidden" id="customDialCode" autocomplete="off" inputmode="tel" placeholder="例如 +351" /></label>
-            <label>电话<input id="contactPhone" autocomplete="off" inputmode="tel" placeholder="例如 13800000000" /></label>
-            <label>邮箱<input id="contactEmail" autocomplete="off" inputmode="email" placeholder="name@example.com" /></label>
-          </div><button class="secondary" type="submit">添加联系人</button></form>
-          <div class="contact-list" id="contactList"></div>
-        </section>
+            <div class="form-grid">
+              <label>
+                订单号
+                <input id="orderNo" required autocomplete="off" placeholder="例如 PI-2026-001" />
+              </label>
+              <label>
+                客户
+                <input id="customer" autocomplete="off" placeholder="客户或公司名称" />
+              </label>
+              <label>
+                国家/地区
+                <input id="country" autocomplete="off" placeholder="例如 Germany" />
+              </label>
+              <label>
+                产品
+                <input id="product" autocomplete="off" placeholder="产品名称" />
+              </label>
+              <label>
+                数量
+                <input id="quantity" autocomplete="off" placeholder="例如 2000 pcs" />
+              </label>
+              <label>
+                重量
+                <input id="weight" autocomplete="off" placeholder="例如 560 kg / 1.2 CBM" />
+              </label>
+              <label>
+                品类
+                <input id="category" autocomplete="off" placeholder="例如 家居用品 / 五金" />
+              </label>
+              <label>
+                货物包装
+                <input id="packaging" autocomplete="off" placeholder="例如 纸箱 / 托盘 / 散装" />
+              </label>
+              <label>
+                金额
+                <input id="amount" autocomplete="off" placeholder="例如 USD 12,500" />
+              </label>
+              <label>
+                交期
+                <input id="dueDate" type="date" />
+              </label>
+              <label>
+                状态
+                <select id="status"></select>
+              </label>
+            </div>
 
-        <section class="panel log-panel"><div class="section-title"><h3>工作日志/文件自动识别</h3><span>识别订单、货物、联系人、阶段、问题、提醒</span></div>
-          <div class="upload-row"><button class="secondary" id="uploadFileBtn" type="button">上传文件</button><span id="fileReadHint">支持 txt、md、csv、json、xlsx、xls、pdf、docx</span><input id="infoFileInput" type="file" accept=".txt,.md,.csv,.json,.xlsx,.xls,.pdf,.docx" /></div>
-          <textarea id="workLog" rows="6" placeholder="示例：PI-2026-001 今天客户确认打样，发现包装标签尺寸不符，下一步明天发新版唛头给客户确认。"></textarea>
-          <div class="log-actions"><button class="secondary" id="previewLogBtn" type="button">分析日志</button><button class="primary" id="applyLogBtn" type="button" disabled>应用更新</button></div>
-          <div class="log-preview" id="logPreview"></div>
-        </section>
+            <label>
+              当前进度
+              <select id="stage"></select>
+            </label>
 
-        <section class="panel activity-panel"><div class="section-title"><h3>更新记录</h3><span id="activityCount"></span></div><div class="activity-list" id="activityList"></div></section>
-      </section>
+            <label>
+              下一步
+              <input id="nextAction" autocomplete="off" placeholder="例如 等客户确认唛头，5月15日前回复" />
+            </label>
 
-      <!-- ===== MODULE: 海运操作 ===== -->
-      <section class="module-panel" id="module-shipping">
-        <section class="panel flow-panel"><div class="section-title"><h3>海运操作流程 (15步)</h3><span id="shStepProgress"></span></div>
-          <div class="progress-chain" id="shippingChain"></div>
-          <div class="node-editor hidden" id="shNodeEditor">
-            <div><strong id="shNodeTitle"></strong><p id="shNodeMeta"></p></div>
-            <label>操作备注<textarea id="shNodeNote" rows="3" placeholder="记录该步骤的操作详情、船公司反馈、异常情况等"></textarea></label>
-            <div style="display:flex;gap:8px;"><input id="shNodeDate" type="datetime-local" /><select id="shNodeStatus"><option value="pending">待处理</option><option value="ongoing">进行中</option><option value="done">已完成</option><option value="problem">有问题</option></select></div>
-            <div class="node-actions"><button class="secondary" id="clearShNodeBtn" type="button">清除</button><button class="primary" id="saveShNodeBtn" type="button">保存步骤</button></div>
-          </div>
-        </section>
+            <label>
+              备注
+              <textarea id="notes" rows="4" placeholder="付款条款、包装要求、客户偏好等"></textarea>
+            </label>
 
-        <section class="panel"><div class="section-title"><h3>海运信息</h3></div>
-          <form class="form-grid" id="shippingForm">
-            <label>船公司<input id="shCarrier" autocomplete="off" placeholder="例如 MAERSK" /></label>
-            <label>船名/航次<input id="shVessel" autocomplete="off" placeholder="例如 EVER GLOBE / 2518E" /></label>
-            <label>起运港<input id="shPol" autocomplete="off" placeholder="例如 SHANGHAI" /></label>
-            <label>目的港<input id="shPod" autocomplete="off" placeholder="例如 ROTTERDAM" /></label>
-            <label>ETD 预计开船<input id="shEtd" type="date" /></label>
-            <label>ETA 预计到港<input id="shEta" type="date" /></label>
-            <label>集装箱号<input id="shCntrNo" autocomplete="off" placeholder="例如 MSKU1234567" /></label>
-            <label>箱型<select id="shCntrType"><option value="20GP">20GP</option><option value="40GP">40GP</option><option value="40HQ" selected>40HQ</option><option value="45HQ">45HQ</option><option value="20RF">20RF 冷柜</option><option value="40RF">40RF 冷柜</option><option value="LCL">拼箱 LCL</option></select></label>
-            <label>封号<input id="shSealNo" autocomplete="off" placeholder="例如 ABC12345" /></label>
-            <label>VGM (KGS)<input id="shVgm" type="number" step="0.1" placeholder="皮重+货重" /></label>
-            <label>货代/代理<input id="shForwarder" autocomplete="off" placeholder="负责货代公司" /></label>
-            <label>SO号/订舱号<input id="shSoNo" autocomplete="off" placeholder="订舱确认号" /></label>
+            <div class="form-actions">
+              <button class="primary" type="submit">保存修改</button>
+              <span id="saveHint"></span>
+            </div>
           </form>
-          <div class="form-actions"><button class="primary" id="saveShippingBtn" type="button">保存海运信息</button><span id="shSaveHint"></span></div>
-        </section>
 
-        <section class="panel"><div class="section-title"><h3>海运费用</h3><button class="secondary small" id="addShippingCostBtn" type="button">+ 添加</button></div>
-          <table class="cost-table"><thead><tr><th>费用项目</th><th>币种</th><th>单价</th><th>数量</th><th>金额</th><th></th></tr></thead><tbody id="shippingCostBody"></tbody><tfoot id="shippingCostFoot"></tfoot></table>
+          <section class="panel issue-panel">
+            <div class="section-title">
+              <h3>问题记录</h3>
+              <span id="issueCount"></span>
+            </div>
+
+            <form class="issue-form" id="issueForm">
+              <textarea id="issueText" rows="3" placeholder="记录质量、交期、付款、单证、沟通等问题"></textarea>
+              <div class="issue-controls">
+                <select id="issueSeverity">
+                  <option value="一般">一般</option>
+                  <option value="重要">重要</option>
+                  <option value="紧急">紧急</option>
+                </select>
+                <button class="secondary" type="submit">添加问题</button>
+              </div>
+            </form>
+
+            <div class="issue-list" id="issueList"></div>
+          </section>
+
+          <section class="panel contact-panel">
+            <div class="section-title">
+              <h3>联系方式</h3>
+              <span id="contactCount"></span>
+            </div>
+
+            <form class="contact-form" id="contactForm">
+              <div class="contact-grid">
+                <label>
+                  类型
+                  <select id="contactRole">
+                    <option value="工厂">工厂</option>
+                    <option value="货主">货主</option>
+                    <option value="货代">货代</option>
+                    <option value="其他">其他</option>
+                  </select>
+                </label>
+                <label>
+                  姓名/备注
+                  <input id="contactNote" autocomplete="off" placeholder="例如 张经理 / 订舱联系人" />
+                </label>
+                <label>
+                  国家/地区区号
+                  <select id="contactDialCode">
+                    <option value="+86">中国 +86</option>
+                    <option value="+852">中国香港 +852</option>
+                    <option value="+853">中国澳门 +853</option>
+                    <option value="+886">中国台湾 +886</option>
+                    <option value="+1">美国/加拿大 +1</option>
+                    <option value="+44">英国 +44</option>
+                    <option value="+49">德国 +49</option>
+                    <option value="+33">法国 +33</option>
+                    <option value="+39">意大利 +39</option>
+                    <option value="+34">西班牙 +34</option>
+                    <option value="+31">荷兰 +31</option>
+                    <option value="+61">澳大利亚 +61</option>
+                    <option value="+64">新西兰 +64</option>
+                    <option value="+81">日本 +81</option>
+                    <option value="+82">韩国 +82</option>
+                    <option value="+65">新加坡 +65</option>
+                    <option value="+60">马来西亚 +60</option>
+                    <option value="+66">泰国 +66</option>
+                    <option value="+84">越南 +84</option>
+                    <option value="+62">印尼 +62</option>
+                    <option value="+91">印度 +91</option>
+                    <option value="+971">阿联酋 +971</option>
+                    <option value="+966">沙特 +966</option>
+                    <option value="+90">土耳其 +90</option>
+                    <option value="+7">俄罗斯 +7</option>
+                    <option value="+55">巴西 +55</option>
+                    <option value="+52">墨西哥 +52</option>
+                    <option value="+27">南非 +27</option>
+                    <option value="custom">其他，自定义区号</option>
+                  </select>
+                  <input class="hidden" id="customDialCode" autocomplete="off" inputmode="tel" placeholder="例如 +351" />
+                </label>
+                <label>
+                  电话
+                  <input id="contactPhone" autocomplete="off" inputmode="tel" placeholder="例如 13800000000" />
+                </label>
+                <label>
+                  邮箱
+                  <input id="contactEmail" autocomplete="off" inputmode="email" placeholder="name@example.com" />
+                </label>
+              </div>
+              <button class="secondary" type="submit">添加联系人</button>
+            </form>
+
+            <div class="contact-list" id="contactList"></div>
+          </section>
+
+          <section class="panel log-panel">
+            <div class="section-title">
+              <h3>工作日志/文件自动识别</h3>
+              <span>识别订单、货物、联系人、阶段、问题、提醒</span>
+            </div>
+            <div class="upload-row">
+              <button class="secondary" id="uploadFileBtn" type="button">上传文件</button>
+              <span id="fileReadHint">支持 txt、md、csv、json、xlsx、xls、pdf、docx</span>
+              <input id="infoFileInput" type="file" accept=".txt,.md,.csv,.json,.xlsx,.xls,.pdf,.docx" />
+            </div>
+            <textarea id="workLog" rows="8" placeholder="示例：PI-2026-001 今天客户确认打样，发现包装标签尺寸不符，下一步明天发新版唛头给客户确认。"></textarea>
+            <div class="log-actions">
+              <button class="secondary" id="previewLogBtn" type="button">分析日志</button>
+              <button class="primary" id="applyLogBtn" type="button" disabled>应用更新</button>
+            </div>
+            <div class="log-preview" id="logPreview"></div>
+          </section>
+
+          <section class="panel activity-panel">
+            <div class="section-title">
+              <h3>更新记录</h3>
+              <span id="activityCount"></span>
+            </div>
+            <div class="activity-list" id="activityList"></div>
+          </section>
         </section>
       </section>
+    </main>
 
-      <!-- ===== MODULE: 单证操作 ===== -->
-      <section class="module-panel" id="module-docs">
-        <section class="panel"><div class="section-title"><h3>单证清单</h3><span id="docProgress"></span></div>
-          <div class="doc-check-grid" id="docCheckGrid"></div>
-        </section>
-        <section class="panel"><div class="section-title"><h3>单证详情</h3></div>
-          <form class="form-grid">
-            <label>提单号<input id="docBlNo" autocomplete="off" placeholder="例如 BL-123456" /></label>
-            <label>提单类型<select id="docBlType"><option value="original">正本提单</option><option value="telex">电放</option><option value="seaway">SEA WAYBILL</option></select></label>
-            <label>产地证类型<select id="docCooType"><option value="">无</option><option value="CO">一般原产地证 CO</option><option value="FORM A">FORM A</option><option value="FORM E">FORM E</option><option value="FORM F">FORM F</option><option value="RCEP">RCEP</option></select></label>
-            <label>保险单号<input id="docInsurance" autocomplete="off" placeholder="保险单号" /></label>
-            <label>检验证书<input id="docInspection" autocomplete="off" placeholder="例如 SGS / BV 证书号" /></label>
-            <label>交单银行<input id="docBank" autocomplete="off" placeholder="例如 HSBC" /></label>
-            <label>交单日期<input id="docPresentDate" type="date" /></label>
-            <label>快递单号<input id="docCourier" autocomplete="off" placeholder="寄送正本文件的快递号" /></label>
-          </form>
-          <div class="form-actions"><button class="primary" id="saveDocsBtn" type="button">保存单证信息</button><span id="docSaveHint"></span></div>
-        </section>
-        <section class="panel"><div class="section-title"><h3>单证备注</h3></div>
-          <div style="display:flex;gap:8px;"><input id="docNoteInput" autocomplete="off" placeholder="添加单证相关备注..." style="flex:1;" /><button class="primary small" id="addDocNoteBtn" type="button">添加</button></div>
-          <div class="activity-list" id="docNotesList" style="margin-top:8px;"></div>
-        </section>
+    <div class="alarm-overlay hidden" id="alarmOverlay" role="dialog" aria-modal="true" aria-labelledby="alarmTitle">
+      <section class="alarm-dialog">
+        <p class="eyebrow">跟单提醒</p>
+        <h2 id="alarmTitle">需要跟进</h2>
+        <div class="alarm-content" id="alarmContent"></div>
+        <div class="alarm-actions">
+          <button class="secondary" id="snoozeAlarmBtn" type="button">10 分钟后提醒</button>
+          <button class="primary" id="dismissAlarmBtn" type="button">知道了</button>
+        </div>
       </section>
+    </div>
 
-      <!-- ===== MODULE: 报关操作 ===== -->
-      <section class="module-panel" id="module-customs">
-        <section class="panel flow-panel"><div class="section-title"><h3>报关操作流程 (12步)</h3><span id="csStepProgress"></span></div>
-          <div class="progress-chain" id="customsChain"></div>
-          <div class="node-editor hidden" id="csNodeEditor">
-            <div><strong id="csNodeTitle"></strong><p id="csNodeMeta"></p></div>
-            <label>操作备注<textarea id="csNodeNote" rows="3"></textarea></label>
-            <div style="display:flex;gap:8px;"><input id="csNodeDate" type="datetime-local" /><select id="csNodeStatus"><option value="pending">待处理</option><option value="ongoing">进行中</option><option value="done">已完成</option><option value="problem">有问题</option></select></div>
-            <div class="node-actions"><button class="secondary" id="clearCsNodeBtn" type="button">清除</button><button class="primary" id="saveCsNodeBtn" type="button">保存步骤</button></div>
-          </div>
-        </section>
+    <template id="orderItemTemplate">
+      <button class="order-item" type="button">
+        <span class="order-main">
+          <strong></strong>
+          <small></small>
+        </span>
+        <span class="order-meta"></span>
+      </button>
+    </template>
 
-        <section class="panel"><div class="section-title"><h3>报关信息</h3></div>
-          <form class="form-grid">
-            <label>报关单号<input id="csDeclNo" autocomplete="off" placeholder="海关报关单号" /></label>
-            <label>HS编码<input id="csHsCode" autocomplete="off" placeholder="例如 940360" /></label>
-            <label>申报货值 (USD)<input id="csDeclValue" type="number" step="0.01" placeholder="申报金额" /></label>
-            <label>贸易方式<select id="csTradeMode"><option value="一般贸易">一般贸易</option><option value="进料加工">进料加工</option><option value="来料加工">来料加工</option><option value="保税">保税</option></select></label>
-            <label>报关行<input id="csBroker" autocomplete="off" placeholder="报关行名称" /></label>
-            <label>出口口岸<input id="csPort" autocomplete="off" placeholder="例如 深圳海关" /></label>
-            <label>退税税率 (%)<input id="csTaxRate" type="number" step="0.1" placeholder="例如 13" /></label>
-            <label>核销单号<input id="csVerifyNo" autocomplete="off" placeholder="外汇核销单号" /></label>
-          </form>
-          <div class="form-actions"><button class="primary" id="saveCustomsBtn" type="button">保存报关信息</button><span id="csSaveHint"></span></div>
-        </section>
-      </section>
+    <template id="issueTemplate">
+      <article class="issue-item">
+        <div>
+          <span class="severity"></span>
+          <p></p>
+          <small></small>
+        </div>
+        <div class="issue-actions">
+          <button class="ghost close-issue" type="button" title="解决/重开">✓</button>
+          <button class="ghost delete-issue" type="button" title="删除问题">×</button>
+        </div>
+      </article>
+    </template>
 
-    </section>
-  </section>
-</main>
-
-<div class="alarm-overlay hidden" id="alarmOverlay" role="dialog" aria-modal="true" aria-labelledby="alarmTitle">
-  <section class="alarm-dialog">
-    <p class="eyebrow">跟单提醒</p><h2 id="alarmTitle">需要跟进</h2>
-    <div class="alarm-content" id="alarmContent"></div>
-    <div class="alarm-actions"><button class="secondary" id="snoozeAlarmBtn" type="button">10 分钟后提醒</button><button class="primary" id="dismissAlarmBtn" type="button">知道了</button></div>
-  </section>
-</div>
-
-<template id="orderItemTemplate">
-  <button class="order-item" type="button"><span class="order-main"><strong></strong><small></small></span><span class="order-meta"></span></button>
-</template>
-<template id="issueTemplate">
-  <article class="issue-item"><div><span class="severity"></span><p></p><small></small></div><div class="issue-actions"><button class="ghost close-issue" type="button" title="解决/重开">✓</button><button class="ghost delete-issue" type="button" title="删除问题">×</button></div></article>
-</template>
-
-<script src="./app.js"></script>
-</body>
+    <script src="./app.js"></script>
+  </body>
 </html>

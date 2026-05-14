@@ -32,6 +32,14 @@ input:focus, select:focus, textarea:focus { border-color: var(--ship-primary) !i
 .doc-priority.important { background: #fff2d8; color: var(--warning); }
 .doc-priority.normal { background: #e6f7ee; color: #1f8c5c; }
 .chain-link { display: inline-block; font-size: 11px; color: var(--muted); margin-left: 4px; }
+.doc-check-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.doc-check-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: #fbfdfc; }
+.doc-check-item input[type=checkbox] { width: 18px; height: 18px; min-height: 0; accent-color: var(--ship-primary); cursor: pointer; }
+.doc-check-item .doc-label { font-size: 13px; }
+.doc-check-item .doc-badge { font-size: 9px; padding: 2px 6px; border-radius: 99px; margin-left: auto; white-space: nowrap; }
+.doc-check-item .doc-badge.ok { background: #f0e6f7; color: var(--ship-primary); }
+.doc-check-item .doc-badge.wait { background: #fff2d8; color: var(--warning); }
+@media (max-width:1100px) { .doc-check-grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -91,7 +99,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--ship-primary) !i
         <div class="follow-summary" id="followSummary"></div>
       </section>
 
-      <!-- Task Form -->
+      <!-- Task Form - Basic Info -->
       <form class="panel order-form" id="taskForm">
         <div class="section-title"><h3>单证任务信息</h3><span id="lastUpdated"></span></div>
         <div class="form-grid">
@@ -103,16 +111,45 @@ input:focus, select:focus, textarea:focus { border-color: var(--ship-primary) !i
           <label>发票金额<input id="fInvoiceAmt" autocomplete="off" placeholder="例如 USD 12,500" /></label>
           <label>提单号<input id="fBlNo" autocomplete="off" placeholder="例如 BL-123456" /></label>
           <label>提单类型<select id="fBlType"><option value="original">正本提单</option><option value="telex">电放 Telex Release</option><option value="seaway">海运单 Sea Waybill</option></select></label>
-          <label>产地证类型<select id="fCooType"><option value="">无需</option><option value="CO">一般原产地证 CO</option><option value="FORM A">FORM A 普惠制</option><option value="FORM E">FORM E 东盟</option><option value="FORM F">FORM F 中智</option><option value="RCEP">RCEP</option></select></label>
-          <label>保险单号<input id="fInsurance" autocomplete="off" placeholder="保险单号" /></label>
           <label>信用证号 (L/C)<input id="fLcNo" autocomplete="off" placeholder="如为L/C结算" /></label>
           <label>L/C有效期<input id="fLcExpiry" type="date" /></label>
           <label>交单银行<input id="fBank" autocomplete="off" placeholder="例如 HSBC CN" /></label>
           <label>交单期限<input id="fDeadline" type="date" /></label>
-          <label style="grid-column:span 2;">备注<textarea id="fNotes" rows="3" placeholder="客户特殊单证要求、信用证条款注意事项等"></textarea></label>
+          <label style="grid-column:span 2;">备注<textarea id="fNotes" rows="2" placeholder="客户特殊单证要求、信用证条款注意事项等"></textarea></label>
         </div>
         <div class="form-actions"><button class="primary" type="submit">保存修改</button><span id="saveHint"></span></div>
       </form>
+
+      <!-- Document Info Panel -->
+      <section class="panel" style="padding:20px;">
+        <div class="section-title"><h3>单证详细信息</h3><span>各类型单证的具体编号和状态</span></div>
+        <div class="form-grid" style="grid-template-columns:repeat(2,1fr);">
+          <label>产地证类型<select id="fCooType"><option value="">无需产地证</option><option value="CO">一般原产地证 CO</option><option value="FORM A">FORM A 普惠制产地证</option><option value="FORM B">FORM B 亚太产地证</option><option value="FORM E">FORM E 中国-东盟</option><option value="FORM F">FORM F 中国-智利</option><option value="FORM P">FORM P 中国-巴基斯坦</option><option value="FORM R">FORM R 中国-秘鲁</option><option value="RCEP">RCEP 原产地证</option></select></label>
+          <label>产地证编号<input id="fCooNo" autocomplete="off" placeholder="产地证证书编号" /></label>
+          <label>保险单号<input id="fInsurance" autocomplete="off" placeholder="保险单号 / 保险公司" /></label>
+          <label>保险金额/险别<input id="fInsuranceDetail" autocomplete="off" placeholder="例如 110%发票金额 / 一切险" /></label>
+          <label>检验证书类型<select id="fInspectionType"><option value="">无需检验</option><option value="SGS">SGS 检验证书</option><option value="BV">BV 必维检验证书</option><option value="CCIC">CCIC 中检证书</option><option value="CIQ">CIQ 出入境检验检疫</option><option value="Other">其他第三方检验</option></select></label>
+          <label>检验证书编号<input id="fInspectionNo" autocomplete="off" placeholder="检验证书编号" /></label>
+          <label>熏蒸/植检证书<input id="fFumigation" autocomplete="off" placeholder="熏蒸证书编号 (木质包装)" /></label>
+          <label>重量证书<input id="fWeightCert" autocomplete="off" placeholder="重量证书编号 (SGS/BV)" /></label>
+          <label>船公司证明<select id="fCarrierCert"><option value="">无需</option><option value="age">船龄证明</option><option value="flag">船籍证明</option><option value="blacklist">黑名单证明</option><option value="israel">非以色列船舶证明</option></select></label>
+          <label>证明编号/日期<input id="fCarrierCertNo" autocomplete="off" placeholder="船公司证明编号或日期" /></label>
+          <label>使馆认证类型<select id="fEmbassyCert"><option value="">无需认证</option><option value="invoice">发票认证</option><option value="coo">产地证认证</option><option value="both">发票+产地证认证</option></select></label>
+          <label>认证国家/使馆<input id="fEmbassyCountry" autocomplete="off" placeholder="例如 埃及/阿根廷/沙特" /></label>
+          <label>报关单号<input id="fDeclNo" autocomplete="off" placeholder="海关报关单号" /></label>
+          <label>核销单号<input id="fVerifyNo" autocomplete="off" placeholder="外汇核销单号" /></label>
+          <label>汇票编号/金额<input id="fDraft" autocomplete="off" placeholder="汇票号 / 金额" /></label>
+          <label>快递单号<input id="fCourierNo" autocomplete="off" placeholder="寄送正本文件的快递号" /></label>
+          <label style="grid-column:span 2;">特殊单证备注<textarea id="fDocNotes" rows="2" placeholder="客户额外要求的特殊单证、格式要求等"></textarea></label>
+        </div>
+        <div class="form-actions"><button class="primary" id="saveDocInfoBtn" type="button">保存单证信息</button><span id="docSaveHint" style="color:var(--ship-primary);font-size:13px;"></span></div>
+      </section>
+
+      <!-- Document Checklist -->
+      <section class="panel" style="padding:20px;">
+        <div class="section-title"><h3>单证清单核对</h3><span id="docCheckProgress"></span></div>
+        <div class="doc-check-grid" id="docCheckGrid"></div>
+      </section>
 
       <!-- Issues -->
       <section class="panel issue-panel">
@@ -165,6 +202,27 @@ const STEPS = [
   { id:'15', name:'跟踪收汇/归档', desc:'跟踪客户付款/银行收汇状态，全套单证扫描归档备查' }
 ];
 
+const DOC_CHECKLIST = [
+  { id:'d01', name:'装箱单 Packing List' },
+  { id:'d02', name:'商业发票 Commercial Invoice' },
+  { id:'d03', name:'外贸合同 Sales Contract' },
+  { id:'d04', name:'正本提单 Original BL' },
+  { id:'d05', name:'电放/海运单 Telex/Sea Waybill' },
+  { id:'d06', name:'产地证 COO/FORM' },
+  { id:'d07', name:'保险单 Insurance Policy' },
+  { id:'d08', name:'报关单 Customs Declaration' },
+  { id:'d09', name:'报关委托书/申报要素' },
+  { id:'d10', name:'检验证书 Inspection Cert' },
+  { id:'d11', name:'熏蒸/植检证书 Fumigation' },
+  { id:'d12', name:'重量证书 Weight Certificate' },
+  { id:'d13', name:'船公司证明 Carrier Certificate' },
+  { id:'d14', name:'使馆/领事认证 Consular Legalization' },
+  { id:'d15', name:'汇票 Bill of Exchange/Draft' },
+  { id:'d16', name:'受益人证明 Beneficiary Certificate' },
+  { id:'d17', name:'装船通知 Shipping Advice' },
+  { id:'d18', name:'银行交单面函 Cover Letter' }
+];
+
 const STATUSES = ['进行中','单据确认中','待客户确认','已交单','已收汇','已完成'];
 const STORAGE_KEY = 'docsOps.tasks.v1';
 const state = { tasks: [], selectedId: null, selectedNode: null };
@@ -183,8 +241,16 @@ function initTask(t) {
   t.activities=Array.isArray(t.activities)?t.activities:[];
   t.ref=t.ref||'';t.customer=t.customer||'';t.product=t.product||'';t.invoiceNo=t.invoiceNo||'';
   t.invoiceAmt=t.invoiceAmt||'';t.blNo=t.blNo||'';t.blType=t.blType||'original';
-  t.cooType=t.cooType||'';t.insurance=t.insurance||'';t.lcNo=t.lcNo||'';
-  t.lcExpiry=t.lcExpiry||'';t.bank=t.bank||'';t.deadline=t.deadline||'';t.notes=t.notes||'';
+  t.cooType=t.cooType||'';t.cooNo=t.cooNo||'';t.insurance=t.insurance||'';t.insuranceDetail=t.insuranceDetail||'';
+  t.inspectionType=t.inspectionType||'';t.inspectionNo=t.inspectionNo||'';
+  t.fumigation=t.fumigation||'';t.weightCert=t.weightCert||'';
+  t.carrierCert=t.carrierCert||'';t.carrierCertNo=t.carrierCertNo||'';
+  t.embassyCert=t.embassyCert||'';t.embassyCountry=t.embassyCountry||'';
+  t.declNo=t.declNo||'';t.verifyNo=t.verifyNo||'';t.draft=t.draft||'';
+  t.courierNo=t.courierNo||'';t.docNotes=t.docNotes||'';
+  t.lcNo=t.lcNo||'';t.lcExpiry=t.lcExpiry||'';t.bank=t.bank||'';t.deadline=t.deadline||'';t.notes=t.notes||'';
+  t.docChecklist = t.docChecklist||{};
+  DOC_CHECKLIST.forEach(d=>{t.docChecklist[d.id]=t.docChecklist[d.id]||{checked:false};});
   return t;
 }
 
@@ -275,11 +341,21 @@ function renderAll(){
   document.querySelector('#fCustomer').value=t.customer||'';document.querySelector('#fProduct').value=t.product||'';
   document.querySelector('#fInvoiceNo').value=t.invoiceNo||'';document.querySelector('#fInvoiceAmt').value=t.invoiceAmt||'';
   document.querySelector('#fBlNo').value=t.blNo||'';document.querySelector('#fBlType').value=t.blType||'original';
-  document.querySelector('#fCooType').value=t.cooType||'';document.querySelector('#fInsurance').value=t.insurance||'';
   document.querySelector('#fLcNo').value=t.lcNo||'';document.querySelector('#fLcExpiry').value=t.lcExpiry||'';
   document.querySelector('#fBank').value=t.bank||'';document.querySelector('#fDeadline').value=t.deadline||'';document.querySelector('#fNotes').value=t.notes||'';
+  // Doc info fields
+  document.querySelector('#fCooType').value=t.cooType||'';document.querySelector('#fCooNo').value=t.cooNo||'';
+  document.querySelector('#fInsurance').value=t.insurance||'';document.querySelector('#fInsuranceDetail').value=t.insuranceDetail||'';
+  document.querySelector('#fInspectionType').value=t.inspectionType||'';document.querySelector('#fInspectionNo').value=t.inspectionNo||'';
+  document.querySelector('#fFumigation').value=t.fumigation||'';document.querySelector('#fWeightCert').value=t.weightCert||'';
+  document.querySelector('#fCarrierCert').value=t.carrierCert||'';document.querySelector('#fCarrierCertNo').value=t.carrierCertNo||'';
+  document.querySelector('#fEmbassyCert').value=t.embassyCert||'';document.querySelector('#fEmbassyCountry').value=t.embassyCountry||'';
+  document.querySelector('#fDeclNo').value=t.declNo||'';document.querySelector('#fVerifyNo').value=t.verifyNo||'';
+  document.querySelector('#fDraft').value=t.draft||'';document.querySelector('#fCourierNo').value=t.courierNo||'';
+  document.querySelector('#fDocNotes').value=t.docNotes||'';
   document.querySelector('#lastUpdated').textContent=`更新于 ${fmt(t.updatedAt)}`;
-  renderProcessChain();renderNodeEditor();renderReminders(t);renderIssues(t);renderContacts(t);renderActivities(t);renderList();renderMetrics();
+  renderProcessChain();renderNodeEditor();renderReminders(t);renderIssues(t);renderContacts(t);renderActivities(t);
+  renderDocChecklist(t);renderList();renderMetrics();
 }
 
 function renderReminders(t){
@@ -329,7 +405,27 @@ function addTask(){
   const ca=now();const t=initTask({id:uid(),ref:`DOC-${new Date().getFullYear()}-${String(state.tasks.length+1).padStart(3,'0')}`,createdAt:ca,updatedAt:ca});
   t.activities.push({id:uid(),text:'新建单证任务',createdAt:ca});state.tasks.unshift(t);state.selectedId=t.id;save();renderAll();document.querySelector('#fRef')?.focus();
 }
-function saveTask(e){e.preventDefault();const t=selected();if(!t)return;const g=id=>document.querySelector(id)?.value||'';Object.assign(t,{ref:g('#fRef'),status:g('#fStatus'),customer:g('#fCustomer'),product:g('#fProduct'),invoiceNo:g('#fInvoiceNo'),invoiceAmt:g('#fInvoiceAmt'),blNo:g('#fBlNo'),blType:g('#fBlType'),cooType:g('#fCooType'),insurance:g('#fInsurance'),lcNo:g('#fLcNo'),lcExpiry:g('#fLcExpiry'),bank:g('#fBank'),deadline:g('#fDeadline'),notes:g('#fNotes'),updatedAt:now()});t.activities.push({id:uid(),text:'更新单证任务信息',createdAt:now()});save();renderAll();document.querySelector('#saveHint').textContent=`已保存 ${nowText()}`;setTimeout(()=>document.querySelector('#saveHint').textContent='',2200);}
+function saveTask(e){e.preventDefault();const t=selected();if(!t)return;const g=id=>document.querySelector(id)?.value||'';Object.assign(t,{ref:g('#fRef'),status:g('#fStatus'),customer:g('#fCustomer'),product:g('#fProduct'),invoiceNo:g('#fInvoiceNo'),invoiceAmt:g('#fInvoiceAmt'),blNo:g('#fBlNo'),blType:g('#fBlType'),lcNo:g('#fLcNo'),lcExpiry:g('#fLcExpiry'),bank:g('#fBank'),deadline:g('#fDeadline'),notes:g('#fNotes'),updatedAt:now()});t.activities.push({id:uid(),text:'更新单证任务信息',createdAt:now()});save();renderAll();document.querySelector('#saveHint').textContent=`已保存 ${nowText()}`;setTimeout(()=>document.querySelector('#saveHint').textContent='',2200);}
+
+function saveDocInfo(){
+  const t=selected();if(!t)return;const g=id=>document.querySelector(id)?.value||'';
+  Object.assign(t,{cooType:g('#fCooType'),cooNo:g('#fCooNo'),insurance:g('#fInsurance'),insuranceDetail:g('#fInsuranceDetail'),inspectionType:g('#fInspectionType'),inspectionNo:g('#fInspectionNo'),fumigation:g('#fFumigation'),weightCert:g('#fWeightCert'),carrierCert:g('#fCarrierCert'),carrierCertNo:g('#fCarrierCertNo'),embassyCert:g('#fEmbassyCert'),embassyCountry:g('#fEmbassyCountry'),declNo:g('#fDeclNo'),verifyNo:g('#fVerifyNo'),draft:g('#fDraft'),courierNo:g('#fCourierNo'),docNotes:g('#fDocNotes'),updatedAt:now()});
+  t.activities.push({id:uid(),text:'更新单证详细信息',createdAt:now()});save();renderAll();
+  document.querySelector('#docSaveHint').textContent=`已保存 ${nowText()}`;setTimeout(()=>document.querySelector('#docSaveHint').textContent='',2200);
+}
+
+function renderDocChecklist(t){
+  const prog=document.querySelector('#docCheckProgress');
+  const checked=Object.values(t.docChecklist||{}).filter(v=>v.checked).length;
+  if(prog) prog.textContent=`${checked}/${DOC_CHECKLIST.length} 已确认`;
+  const grid=document.querySelector('#docCheckGrid');if(!grid)return;
+  grid.innerHTML=DOC_CHECKLIST.map(d=>{
+    const c=(t.docChecklist||{})[d.id]||{checked:false};
+    return`<div class="doc-check-item"><input type="checkbox" ${c.checked?'checked':''} onchange="toggleDocCheck('${d.id}')" /><span class="doc-label">${c.checked?'<s style="color:var(--muted);">'+esc(d.name)+'</s>':esc(d.name)}</span><span class="doc-badge ${c.checked?'ok':'wait'}">${c.checked?'✅ 已确认':'待确认'}</span></div>`;
+  }).join('');
+}
+
+function toggleDocCheck(id){const t=selected();if(!t)return;t.docChecklist[id].checked=!t.docChecklist[id].checked;t.updatedAt=now();save();renderDocChecklist(t);}
 function deleteTask(){const t=selected();if(!t)return;if(!confirm(`确定删除 ${t.ref||'未填'}？`))return;state.tasks=state.tasks.filter(x=>x.id!==t.id);state.selectedId=state.tasks[0]?.id||null;save();renderAll();}
 
 function saveNode(){
@@ -351,6 +447,7 @@ function bind(){
   document.querySelector('#deleteBtn')?.addEventListener('click',deleteTask);document.querySelector('#taskForm')?.addEventListener('submit',saveTask);
   document.querySelector('#issueForm')?.addEventListener('submit',addIssue);document.querySelector('#contactForm')?.addEventListener('submit',addContact);
   document.querySelector('#saveNodeNoteBtn')?.addEventListener('click',saveNode);document.querySelector('#clearNodeReminderBtn')?.addEventListener('click',clearNodeReminder);
+  document.querySelector('#saveDocInfoBtn')?.addEventListener('click',saveDocInfo);
   document.querySelector('#searchInput')?.addEventListener('input',renderList);document.querySelector('#statusFilter')?.addEventListener('change',renderList);
   document.querySelector('#exportBtn')?.addEventListener('click',exportData);document.querySelector('#importInput')?.addEventListener('change',importData);
 }

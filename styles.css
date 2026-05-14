@@ -51,7 +51,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); box-sh
 .empty-state p { max-width: 520px; margin: 0 auto 22px; color: var(--muted); }
 .content-grid { display: grid; grid-template-columns: minmax(380px, 1.2fr) minmax(320px, 0.8fr); gap: 18px; align-items: start; }
 .order-form, .issue-panel, .contact-panel, .log-panel, .activity-panel, .flow-panel, .reminder-panel { padding: 20px; }
-.order-form { grid-column: 1; grid-row: span 2; }
+.order-form { grid-column: 1; }
 .flow-panel { grid-column: span 2; }
 .log-panel, .activity-panel { grid-column: span 2; }
 .section-title { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 14px; }

@@ -55,6 +55,20 @@ window.pdfjsLib = pdfjsLib;
     <section class="content-grid hidden" id="orderEditor">
       <!-- ===== MODULE: 外贸跟单 ===== -->
       <section class="module-panel active" id="module-trade">
+        <section class="panel flow-panel">
+          <div class="section-title"><h3>跟单进度链</h3><span>悬浮看详情，点击编辑备注和提醒</span></div>
+          <div class="progress-chain" id="progressChain"></div>
+          <div class="node-editor" id="nodeEditor">
+            <div><strong id="nodeNoteTitle">节点备注</strong><p id="nodeNoteMeta"></p></div>
+            <label>节点备注<textarea id="nodeNoteText" rows="3" placeholder="记录该节点的具体情况、客户要求、供应商反馈等"></textarea></label>
+            <div class="alarm-picker">
+              <label>月<select id="nodeReminderMonth"></select></label><label>日<select id="nodeReminderDay"></select></label>
+              <label>时<select id="nodeReminderHour"></select></label><label>分<select id="nodeReminderMinute"></select></label>
+            </div>
+            <div class="node-actions"><button class="secondary" id="clearNodeReminderBtn" type="button">清除提醒</button><button class="primary" id="saveNodeNoteBtn" type="button">保存节点</button></div>
+          </div>
+        </section>
+
         <section class="panel order-form" id="orderFormPanel">
           <div class="section-title"><h3>订单信息</h3><span id="lastUpdated"></span></div>
           <form class="form-grid" id="orderForm">
@@ -74,20 +88,6 @@ window.pdfjsLib = pdfjsLib;
             <label style="grid-column:span 2;">备注<textarea id="notes" rows="2" placeholder="付款条款、包装要求、客户偏好等"></textarea></label>
           </form>
           <div class="form-actions"><button class="primary" type="submit" id="saveOrderBtn">保存修改</button><span id="saveHint"></span></div>
-        </section>
-
-        <section class="panel flow-panel">
-          <div class="section-title"><h3>跟单进度链</h3><span>悬浮看详情，点击编辑备注和提醒</span></div>
-          <div class="progress-chain" id="progressChain"></div>
-          <div class="node-editor" id="nodeEditor">
-            <div><strong id="nodeNoteTitle">节点备注</strong><p id="nodeNoteMeta"></p></div>
-            <label>节点备注<textarea id="nodeNoteText" rows="3" placeholder="记录该节点的具体情况、客户要求、供应商反馈等"></textarea></label>
-            <div class="alarm-picker">
-              <label>月<select id="nodeReminderMonth"></select></label><label>日<select id="nodeReminderDay"></select></label>
-              <label>时<select id="nodeReminderHour"></select></label><label>分<select id="nodeReminderMinute"></select></label>
-            </div>
-            <div class="node-actions"><button class="secondary" id="clearNodeReminderBtn" type="button">清除提醒</button><button class="primary" id="saveNodeNoteBtn" type="button">保存节点</button></div>
-          </div>
         </section>
 
         <section class="panel reminder-panel"><div class="section-title"><h3>提醒</h3><span id="reminderCount"></span></div><div class="reminder-list" id="reminderList"></div><div class="follow-summary" id="followSummary"></div></section>
@@ -120,6 +120,16 @@ window.pdfjsLib = pdfjsLib;
 
       <!-- ===== MODULE: 海运操作 ===== -->
       <section class="module-panel" id="module-shipping">
+        <section class="panel flow-panel"><div class="section-title"><h3>海运操作流程 (15步)</h3><span id="shStepProgress"></span></div>
+          <div class="progress-chain" id="shippingChain"></div>
+          <div class="node-editor hidden" id="shNodeEditor">
+            <div><strong id="shNodeTitle"></strong><p id="shNodeMeta"></p></div>
+            <label>操作备注<textarea id="shNodeNote" rows="3" placeholder="记录该步骤的操作详情、船公司反馈、异常情况等"></textarea></label>
+            <div style="display:flex;gap:8px;"><input id="shNodeDate" type="datetime-local" /><select id="shNodeStatus"><option value="pending">待处理</option><option value="ongoing">进行中</option><option value="done">已完成</option><option value="problem">有问题</option></select></div>
+            <div class="node-actions"><button class="secondary" id="clearShNodeBtn" type="button">清除</button><button class="primary" id="saveShNodeBtn" type="button">保存步骤</button></div>
+          </div>
+        </section>
+
         <section class="panel"><div class="section-title"><h3>海运信息</h3></div>
           <form class="form-grid" id="shippingForm">
             <label>船公司<input id="shCarrier" autocomplete="off" placeholder="例如 MAERSK" /></label>
@@ -136,16 +146,6 @@ window.pdfjsLib = pdfjsLib;
             <label>SO号/订舱号<input id="shSoNo" autocomplete="off" placeholder="订舱确认号" /></label>
           </form>
           <div class="form-actions"><button class="primary" id="saveShippingBtn" type="button">保存海运信息</button><span id="shSaveHint"></span></div>
-        </section>
-
-        <section class="panel flow-panel"><div class="section-title"><h3>海运操作流程 (15步)</h3><span id="shStepProgress"></span></div>
-          <div class="progress-chain" id="shippingChain"></div>
-          <div class="node-editor hidden" id="shNodeEditor">
-            <div><strong id="shNodeTitle"></strong><p id="shNodeMeta"></p></div>
-            <label>操作备注<textarea id="shNodeNote" rows="3" placeholder="记录该步骤的操作详情、船公司反馈、异常情况等"></textarea></label>
-            <div style="display:flex;gap:8px;"><input id="shNodeDate" type="datetime-local" /><select id="shNodeStatus"><option value="pending">待处理</option><option value="ongoing">进行中</option><option value="done">已完成</option><option value="problem">有问题</option></select></div>
-            <div class="node-actions"><button class="secondary" id="clearShNodeBtn" type="button">清除</button><button class="primary" id="saveShNodeBtn" type="button">保存步骤</button></div>
-          </div>
         </section>
 
         <section class="panel"><div class="section-title"><h3>海运费用</h3><button class="secondary small" id="addShippingCostBtn" type="button">+ 添加</button></div>
@@ -179,6 +179,16 @@ window.pdfjsLib = pdfjsLib;
 
       <!-- ===== MODULE: 报关操作 ===== -->
       <section class="module-panel" id="module-customs">
+        <section class="panel flow-panel"><div class="section-title"><h3>报关操作流程 (12步)</h3><span id="csStepProgress"></span></div>
+          <div class="progress-chain" id="customsChain"></div>
+          <div class="node-editor hidden" id="csNodeEditor">
+            <div><strong id="csNodeTitle"></strong><p id="csNodeMeta"></p></div>
+            <label>操作备注<textarea id="csNodeNote" rows="3"></textarea></label>
+            <div style="display:flex;gap:8px;"><input id="csNodeDate" type="datetime-local" /><select id="csNodeStatus"><option value="pending">待处理</option><option value="ongoing">进行中</option><option value="done">已完成</option><option value="problem">有问题</option></select></div>
+            <div class="node-actions"><button class="secondary" id="clearCsNodeBtn" type="button">清除</button><button class="primary" id="saveCsNodeBtn" type="button">保存步骤</button></div>
+          </div>
+        </section>
+
         <section class="panel"><div class="section-title"><h3>报关信息</h3></div>
           <form class="form-grid">
             <label>报关单号<input id="csDeclNo" autocomplete="off" placeholder="海关报关单号" /></label>
@@ -191,16 +201,6 @@ window.pdfjsLib = pdfjsLib;
             <label>核销单号<input id="csVerifyNo" autocomplete="off" placeholder="外汇核销单号" /></label>
           </form>
           <div class="form-actions"><button class="primary" id="saveCustomsBtn" type="button">保存报关信息</button><span id="csSaveHint"></span></div>
-        </section>
-
-        <section class="panel flow-panel"><div class="section-title"><h3>报关操作流程 (12步)</h3><span id="csStepProgress"></span></div>
-          <div class="progress-chain" id="customsChain"></div>
-          <div class="node-editor hidden" id="csNodeEditor">
-            <div><strong id="csNodeTitle"></strong><p id="csNodeMeta"></p></div>
-            <label>操作备注<textarea id="csNodeNote" rows="3"></textarea></label>
-            <div style="display:flex;gap:8px;"><input id="csNodeDate" type="datetime-local" /><select id="csNodeStatus"><option value="pending">待处理</option><option value="ongoing">进行中</option><option value="done">已完成</option><option value="problem">有问题</option></select></div>
-            <div class="node-actions"><button class="secondary" id="clearCsNodeBtn" type="button">清除</button><button class="primary" id="saveCsNodeBtn" type="button">保存步骤</button></div>
-          </div>
         </section>
       </section>
 

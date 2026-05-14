@@ -27,6 +27,12 @@
 .milestone-bar { display: flex; gap: 0; margin-bottom: 12px; border-radius: 8px; overflow: hidden; height: 8px; background: var(--surface-soft); }
 .milestone-done { background: #1a6fb5; height: 100%; transition: width 0.3s; }
 .milestone-problem { background: var(--danger); height: 100%; transition: width 0.3s; }
+.content-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
+.order-form { grid-column: auto !important; grid-row: auto !important; }
+.flow-panel { grid-column: auto !important; }
+.reminder-panel { grid-column: auto !important; grid-template-columns: 1fr !important; }
+.reminder-panel > .follow-summary { grid-column: auto !important; grid-row: auto !important; border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; }
+.panel { margin-bottom: 10px; }
 </style>
 </head>
 <body>

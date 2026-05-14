@@ -40,6 +40,12 @@ input:focus, select:focus, textarea:focus { border-color: var(--ship-primary) !i
 .doc-check-item .doc-badge.ok { background: #f0e6f7; color: var(--ship-primary); }
 .doc-check-item .doc-badge.wait { background: #fff2d8; color: var(--warning); }
 @media (max-width:1100px) { .doc-check-grid { grid-template-columns: 1fr; } }
+.content-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
+.order-form { grid-column: auto !important; grid-row: auto !important; }
+.flow-panel { grid-column: auto !important; }
+.reminder-panel { grid-column: auto !important; grid-template-columns: 1fr !important; }
+.reminder-panel > .follow-summary { grid-column: auto !important; grid-row: auto !important; border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; }
+.panel { margin-bottom: 10px; }
 </style>
 </head>
 <body>

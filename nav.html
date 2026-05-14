@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>外贸操作导航</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: "Microsoft YaHei","PingFang SC",sans-serif; background: #f4f7f6; min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.nav-container { width: 100%; max-width: 720px; }
+.nav-container h1 { text-align: center; font-size: 28px; color: #1c2522; margin-bottom: 8px; }
+.nav-container .sub { text-align: center; color: #66736d; font-size: 14px; margin-bottom: 36px; }
+.nav-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.nav-card { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 36px 20px; border-radius: 12px; text-decoration: none; color: #fff; transition: transform 0.2s, box-shadow 0.2s; }
+.nav-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.18); }
+.nav-card .icon { font-size: 48px; }
+.nav-card .title { font-size: 22px; font-weight: 700; letter-spacing: 2px; }
+.nav-card .desc { font-size: 12px; opacity: 0.8; }
+.card-trade { background: linear-gradient(135deg, #1f7a5c, #155b45); }
+.card-shipping { background: linear-gradient(135deg, #1a6fb5, #134e7a); }
+.card-docs { background: linear-gradient(135deg, #7b3fa3, #5e2d7e); }
+.card-customs { background: linear-gradient(135deg, #c0392b, #922b21); }
+@media (max-width: 500px) { .nav-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="nav-container">
+  <h1>外贸操作管理系统</h1>
+  <p class="sub">Foreign Trade Operations Hub</p>
+  <div class="nav-grid">
+    <a class="nav-card card-trade" href="./index.html">
+      <span class="icon">📋</span>
+      <span class="title">外贸跟单</span>
+      <span class="desc">订单进度 · 问题记录 · 工作日志</span>
+    </a>
+    <a class="nav-card card-shipping" href="./shipping.html">
+      <span class="icon">🚢</span>
+      <span class="title">海运操作</span>
+      <span class="desc">订舱 → 报关 → 到港 全流程</span>
+    </a>
+    <a class="nav-card card-docs" href="./docs.html">
+      <span class="icon">📄</span>
+      <span class="title">单证操作</span>
+      <span class="desc">制单 · 审单 · 交单 全流程</span>
+    </a>
+    <a class="nav-card card-customs" href="./customs.html">
+      <span class="icon">🛃</span>
+      <span class="title">报关操作</span>
+      <span class="desc">申报 · 审单 · 查验 · 放行</span>
+    </a>
+  </div>
+</div>
+</body>
+</html>

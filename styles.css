@@ -44,17 +44,15 @@ button {
 
 .app-shell {
   display: grid;
-  grid-template-columns: minmax(240px, 280px) 1fr;
+  grid-template-columns: minmax(320px, 390px) 1fr;
   min-height: 100vh;
-  max-width: 1400px;
-  margin: 0 auto;
 }
 
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
+  gap: 16px;
+  padding: 24px;
   background: #10241d;
   color: #f7fbf9;
 }
@@ -189,14 +187,13 @@ input,
 select,
 textarea {
   width: 100%;
-  min-height: 36px;
+  min-height: 40px;
   border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 7px 8px;
+  border-radius: 8px;
+  padding: 9px 10px;
   background: var(--surface);
   color: var(--text);
   outline: none;
-  font-size: 13px;
 }
 
 textarea {
@@ -260,7 +257,7 @@ textarea:focus {
 
 .workspace {
   min-width: 0;
-  padding: 16px 20px;
+  padding: 28px;
 }
 
 .topbar {
@@ -309,8 +306,8 @@ textarea:focus {
 
 .content-grid {
   display: grid;
-  grid-template-columns: minmax(320px, 1fr) minmax(260px, 0.9fr);
-  gap: 10px;
+  grid-template-columns: minmax(380px, 1.2fr) minmax(320px, 0.8fr);
+  gap: 18px;
   align-items: start;
 }
 
@@ -321,7 +318,7 @@ textarea:focus {
 .activity-panel,
 .flow-panel,
 .reminder-panel {
-  padding: 14px 16px;
+  padding: 20px;
 }
 
 .order-form {
@@ -353,15 +350,15 @@ textarea:focus {
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 14px;
 }
 
 label {
   display: grid;
-  gap: 5px;
-  margin-bottom: 10px;
+  gap: 7px;
+  margin-bottom: 14px;
   color: #31413b;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
 }
 
@@ -441,30 +438,29 @@ label {
 
 .progress-chain {
   display: grid;
-  grid-template-columns: repeat(20, minmax(68px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(20, minmax(86px, 1fr));
+  gap: 10px;
   overflow-x: auto;
-  padding: 4px 2px 12px;
-  scrollbar-width: thin;
+  padding: 4px 2px 16px;
 }
 
 .chain-node-wrap {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 5px;
 }
 
 .chain-node {
   position: relative;
   display: grid;
   align-content: start;
-  gap: 4px;
+  gap: 8px;
   flex: 1;
-  min-width: 68px;
-  min-height: 96px;
+  min-width: 86px;
+  min-height: 118px;
   border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 7px 8px;
+  border-radius: 8px;
+  padding: 10px;
   background: #fbfdfc;
   color: var(--text);
   text-align: left;
@@ -517,13 +513,12 @@ label {
 .node-dot {
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: var(--surface-soft);
   color: var(--primary-dark);
   font-weight: 800;
-  font-size: 11px;
 }
 
 .chain-node.done .node-dot,
@@ -535,14 +530,13 @@ label {
 
 .node-name {
   font-weight: 800;
-  font-size: 12px;
 }
 
 .node-summary {
-  min-height: 22px;
+  min-height: 34px;
   color: var(--muted);
-  font-size: 10px;
-  line-height: 1.3;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .node-badges {

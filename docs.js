@@ -1,0 +1,269 @@
+const STEPS = [
+  { id:'01', name:'确认单证要求', desc:'与客户确认全套单证要求：正本/电放、产地证类型、是否需要保险、使馆认证等' },
+  { id:'02', name:'制作装箱单', desc:'根据实际装箱情况制作Packing List：件数、毛重、净重、体积、箱号' },
+  { id:'03', name:'制作商业发票', desc:'制作Commercial Invoice：品名、HS编码、单价、总金额、贸易术语、付款条款' },
+  { id:'04', name:'核对合同条款', desc:'对照Sales Contract逐条核对：货描、数量、金额、交货期、付款方式、单证要求' },
+  { id:'05', name:'制作报关委托书', desc:'填写并盖章报关委托书/代理报关委托协议' },
+  { id:'06', name:'填写申报要素', desc:'填写海关申报要素表：品牌类型、用途、材质、功能、原理等' },
+  { id:'07', name:'申请产地证', desc:'向贸促会/商检局申请原产地证CO或优惠产地证FORM系列' },
+  { id:'08', name:'办理保险单', desc:'向保险公司投保海运一切险，获取Insurance Policy/Certificate' },
+  { id:'09', name:'安排商检/检验', desc:'如需要SGS/BV/CCIC等第三方检验，安排检验并获取检验证书' },
+  { id:'10', name:'确认提单草稿', desc:'核对MBL/HBL草稿：Shipper/Consignee/Notify Party/货描/件重尺/运费条款' },
+  { id:'11', name:'核对正本提单', desc:'收到正本提单后逐项核对：背书是否正确、签单章是否完整、日期是否一致' },
+  { id:'12', name:'办理使馆认证', desc:'如目的国要求，将商业发票/产地证等送交使馆/领事馆办理认证' },
+  { id:'13', name:'准备全套交单文件', desc:'按信用证或合同要求整理全套单据：发票+箱单+提单+产地证+保险单+检验证+汇票' },
+  { id:'14', name:'提交银行议付', desc:'将全套单据递交银行审核议付（L/C方式）或寄送客户（T/T方式）' },
+  { id:'15', name:'跟踪收汇/归档', desc:'跟踪客户付款/银行收汇状态，全套单证扫描归档备查' }
+];
+
+const DOC_CHECKLIST = [
+  { id:'d01', name:'装箱单 Packing List' },
+  { id:'d02', name:'商业发票 Commercial Invoice' },
+  { id:'d03', name:'外贸合同 Sales Contract' },
+  { id:'d04', name:'正本提单 Original BL' },
+  { id:'d05', name:'电放/海运单 Telex/Sea Waybill' },
+  { id:'d06', name:'产地证 COO/FORM' },
+  { id:'d07', name:'保险单 Insurance Policy' },
+  { id:'d08', name:'报关单 Customs Declaration' },
+  { id:'d09', name:'报关委托书/申报要素' },
+  { id:'d10', name:'检验证书 Inspection Cert' },
+  { id:'d11', name:'熏蒸/植检证书 Fumigation' },
+  { id:'d12', name:'重量证书 Weight Certificate' },
+  { id:'d13', name:'船公司证明 Carrier Certificate' },
+  { id:'d14', name:'使馆/领事认证 Consular Legalization' },
+  { id:'d15', name:'汇票 Bill of Exchange/Draft' },
+  { id:'d16', name:'受益人证明 Beneficiary Certificate' },
+  { id:'d17', name:'装船通知 Shipping Advice' },
+  { id:'d18', name:'银行交单面函 Cover Letter' }
+];
+
+const STATUSES = ['进行中','单据确认中','待客户确认','已交单','已收汇','已完成'];
+const STORAGE_KEY = 'docsOps.tasks.v1';
+const state = { tasks: [], selectedId: null, selectedNode: null };
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const now = () => new Date().toISOString();
+const nowText = () => new Date().toLocaleString('zh-CN',{hour12:false});
+const esc = s => { const m={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}; return String(s||'').replace(/[&<>"']/g,c=>m[c]); };
+const fmt = v => v?new Date(v).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}):'';
+function formatReminder(v) { if(!v)return'';const d=new Date(v);if(isNaN(d.getTime()))return String(v);return d.toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}); }
+function selected() { return state.tasks.find(t=>t.id===state.selectedId)||null; }
+
+function initTask(t) {
+  t.status = STATUSES.includes(t.status)?t.status:'进行中';
+  t.steps = t.steps||{}; STEPS.forEach(s=>{t.steps[s.id]=t.steps[s.id]||{status:'pending',date:'',note:''};});
+  t.issues=Array.isArray(t.issues)?t.issues:[]; t.contacts=Array.isArray(t.contacts)?t.contacts:[];
+  t.activities=Array.isArray(t.activities)?t.activities:[];
+  t.ref=t.ref||'';t.customer=t.customer||'';t.product=t.product||'';t.invoiceNo=t.invoiceNo||'';
+  t.invoiceAmt=t.invoiceAmt||'';t.blNo=t.blNo||'';t.blType=t.blType||'original';
+  t.cooType=t.cooType||'';t.cooNo=t.cooNo||'';t.insurance=t.insurance||'';t.insuranceDetail=t.insuranceDetail||'';
+  t.inspectionType=t.inspectionType||'';t.inspectionNo=t.inspectionNo||'';
+  t.fumigation=t.fumigation||'';t.weightCert=t.weightCert||'';
+  t.carrierCert=t.carrierCert||'';t.carrierCertNo=t.carrierCertNo||'';
+  t.embassyCert=t.embassyCert||'';t.embassyCountry=t.embassyCountry||'';
+  t.declNo=t.declNo||'';t.verifyNo=t.verifyNo||'';t.draft=t.draft||'';
+  t.courierNo=t.courierNo||'';t.docNotes=t.docNotes||'';
+  t.lcNo=t.lcNo||'';t.lcExpiry=t.lcExpiry||'';t.bank=t.bank||'';t.deadline=t.deadline||'';t.notes=t.notes||'';
+  t.docChecklist = t.docChecklist||{};
+  DOC_CHECKLIST.forEach(d=>{t.docChecklist[d.id]=t.docChecklist[d.id]||{checked:false};});
+  return t;
+}
+
+function load(){try{state.tasks=JSON.parse(localStorage.getItem(STORAGE_KEY))||[];}catch{state.tasks=[];}state.tasks.forEach(initTask);state.selectedId=state.tasks[0]?.id||null;}
+function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state.tasks));}
+
+function populateSelects(){
+  document.querySelector('#statusFilter').innerHTML='<option value="">全部状态</option>'+STATUSES.map(s=>`<option value="${s}">${s}</option>`).join('');
+  document.querySelector('#fStatus').innerHTML=STATUSES.map(s=>`<option value="${s}">${s}</option>`).join('');
+  ['nodeReminderMonth','nodeReminderDay','nodeReminderHour','nodeReminderMinute'].forEach((id,i)=>{
+    const el=document.querySelector('#'+id);if(!el)return;
+    if(i===0)el.innerHTML='<option value="">月</option>'+Array.from({length:12},(_,x)=>`<option value="${x+1}">${x+1}月</option>`).join('');
+    if(i===1)el.innerHTML='<option value="">日</option>'+Array.from({length:31},(_,x)=>`<option value="${x+1}">${x+1}日</option>`).join('');
+    if(i===2)el.innerHTML='<option value="">时</option>'+Array.from({length:24},(_,x)=>`<option value="${String(x).padStart(2,'0')}">${String(x).padStart(2,'0')}时</option>`).join('');
+    if(i===3)el.innerHTML='<option value="">分</option>'+Array.from({length:60},(_,x)=>`<option value="${String(x).padStart(2,'0')}">${String(x).padStart(2,'0')}分</option>`).join('');
+  });
+}
+
+function renderList(){
+  const q=(document.querySelector('#searchInput')?.value||'').trim().toLowerCase();
+  const st=document.querySelector('#statusFilter')?.value||'';
+  const list=document.querySelector('#docList');
+  const filtered=state.tasks.filter(t=>!st||t.status===st).filter(t=>!q||[t.ref,t.customer,t.product,t.blNo,t.invoiceNo].join(' ').toLowerCase().includes(q)).sort((a,b)=>new Date(b.updatedAt||0)-new Date(a.updatedAt||0));
+  if(!list)return;
+  const done=t=>Object.values(t.steps||{}).filter(v=>v.status==='done').length;
+  if(!filtered.length){list.innerHTML='<div class="order-item"><span>暂无匹配任务</span></div>';return;}
+  const tpl=document.querySelector('#itemTemplate');
+  list.innerHTML='';
+  filtered.forEach(t=>{
+    const n=tpl.content.firstElementChild.cloneNode(true);
+    n.classList.toggle('active',t.id===state.selectedId);
+    n.querySelector('strong').textContent=t.ref||'未填订单号';
+    n.querySelector('small').textContent=`${t.customer||''} · ${t.product||''}`;
+    n.querySelector('.order-main span:last-child').textContent=`${done(t)}/${STEPS.length}步 · ${t.blNo||'未填提单号'}`;
+    n.querySelector('.order-meta').textContent=`${t.status||''}`;
+    n.addEventListener('click',()=>{state.selectedId=t.id;state.selectedNode=null;renderAll();});
+    list.appendChild(n);
+  });
+}
+
+function renderMetrics(){
+  const el=document.querySelector('#metrics');if(!el)return;
+  const active=state.tasks.filter(t=>t.status==='进行中'||t.status==='单据确认中').length;
+  const submitted=state.tasks.filter(t=>t.status==='已交单').length;
+  const settled=state.tasks.filter(t=>t.status==='已收汇'||t.status==='已完成').length;
+  el.innerHTML=[['处理中',active],['已交单',submitted],['已收汇',settled]].map(([l,v])=>`<div class="metric"><strong>${v}</strong><span>${l}</span></div>`).join('');
+}
+
+function renderProcessChain(){
+  const t=selected();if(!t)return;
+  const steps=t.steps||{};
+  const doneCnt=Object.values(steps).filter(v=>v.status==='done').length;
+  document.querySelector('#stepProgress').textContent=`${doneCnt}/${STEPS.length} 已完成`;
+  document.querySelector('#milestoneDone').style.width=(doneCnt/STEPS.length*100)+'%';
+  const chain=document.querySelector('#progressChain');if(!chain)return;
+  chain.innerHTML=STEPS.map((st,i)=>{
+    const step=steps[st.id]||{status:'pending',date:'',note:''};
+    let cls='chain-node';
+    if(step.status==='done')cls+=' done';
+    if(step.status==='problem')cls+=' risk';
+    if(state.selectedNode===st.id)cls+=' selected current';
+    return`<div class="chain-node-wrap"><button class="${cls}" type="button" data-step="${st.id}"><span class="node-dot">${i+1}</span><span class="node-name">${st.name}</span><span class="node-summary">${step.date?step.date.slice(0,10):(step.status==='done'?'✓':'待处理')}</span>${step.note?`<span class="node-badges"><span class="node-badge note-badge">备注</span></span>`:''}</button></div>`;
+  }).join('');
+  chain.querySelectorAll('.chain-node').forEach(b=>b.addEventListener('click',()=>{state.selectedNode=b.dataset.step;renderProcessChain();renderNodeEditor();}));
+}
+
+function renderNodeEditor(){
+  const t=selected();if(!t)return;
+  const ed=document.querySelector('#nodeEditor');
+  if(!state.selectedNode){ed.style.display='none';return;}
+  ed.style.display='grid';
+  const step=t.steps[state.selectedNode]||{status:'pending',date:'',note:''};
+  const def=STEPS.find(x=>x.id===state.selectedNode);
+  document.querySelector('#nodeNoteTitle').textContent=def?.name||'';
+  document.querySelector('#nodeNoteMeta').textContent=def?.desc||'';
+  document.querySelector('#nodeNoteText').value=step.note||'';
+  if(step.date){const d=new Date(step.date);document.querySelector('#nodeReminderMonth').value=d.getMonth()+1;document.querySelector('#nodeReminderDay').value=d.getDate();document.querySelector('#nodeReminderHour').value=String(d.getHours()).padStart(2,'0');document.querySelector('#nodeReminderMinute').value=String(d.getMinutes()).padStart(2,'0');}
+}
+
+function renderAll(){
+  const t=selected();
+  document.querySelector('#emptyState').classList.toggle('hidden',!!t);
+  document.querySelector('#editorArea').classList.toggle('hidden',!t);
+  document.querySelector('#deleteBtn').classList.toggle('hidden',!t);
+  document.querySelector('#pageTitle').textContent=t?`${t.ref||'未填'} · ${t.customer||''} ${t.blNo||''}`:'选择或新建单证任务';
+  if(!t){renderList();renderMetrics();return;}
+  document.querySelector('#fRef').value=t.ref||'';document.querySelector('#fStatus').value=t.status||'进行中';
+  document.querySelector('#fCustomer').value=t.customer||'';document.querySelector('#fProduct').value=t.product||'';
+  document.querySelector('#fInvoiceNo').value=t.invoiceNo||'';document.querySelector('#fInvoiceAmt').value=t.invoiceAmt||'';
+  document.querySelector('#fBlNo').value=t.blNo||'';document.querySelector('#fBlType').value=t.blType||'original';
+  document.querySelector('#fLcNo').value=t.lcNo||'';document.querySelector('#fLcExpiry').value=t.lcExpiry||'';
+  document.querySelector('#fBank').value=t.bank||'';document.querySelector('#fDeadline').value=t.deadline||'';document.querySelector('#fNotes').value=t.notes||'';
+  // Doc info fields
+  document.querySelector('#fCooType').value=t.cooType||'';document.querySelector('#fCooNo').value=t.cooNo||'';
+  document.querySelector('#fInsurance').value=t.insurance||'';document.querySelector('#fInsuranceDetail').value=t.insuranceDetail||'';
+  document.querySelector('#fInspectionType').value=t.inspectionType||'';document.querySelector('#fInspectionNo').value=t.inspectionNo||'';
+  document.querySelector('#fFumigation').value=t.fumigation||'';document.querySelector('#fWeightCert').value=t.weightCert||'';
+  document.querySelector('#fCarrierCert').value=t.carrierCert||'';document.querySelector('#fCarrierCertNo').value=t.carrierCertNo||'';
+  document.querySelector('#fEmbassyCert').value=t.embassyCert||'';document.querySelector('#fEmbassyCountry').value=t.embassyCountry||'';
+  document.querySelector('#fDeclNo').value=t.declNo||'';document.querySelector('#fVerifyNo').value=t.verifyNo||'';
+  document.querySelector('#fDraft').value=t.draft||'';document.querySelector('#fCourierNo').value=t.courierNo||'';
+  document.querySelector('#fDocNotes').value=t.docNotes||'';
+  document.querySelector('#lastUpdated').textContent=`更新于 ${fmt(t.updatedAt)}`;
+  renderProcessChain();renderNodeEditor();renderReminders(t);renderIssues(t);renderContacts(t);renderActivities(t);
+  renderDocChecklist(t);renderList();renderMetrics();
+}
+
+function renderReminders(t){
+  const rems=STEPS.map(s=>({stage:s.name,reminderAt:t.steps[s.id]?.date||'',note:t.steps[s.id]?.note||''})).filter(r=>r.reminderAt);
+  document.querySelector('#reminderCount').textContent=rems.length?`${rems.length} 条`:'无';
+  const rl=document.querySelector('#reminderList');
+  if(!rems.length){rl.innerHTML='<div class="reminder-item">暂无提醒</div>';}else{rems.sort((a,b)=>a.reminderAt.localeCompare(b.reminderAt));rl.innerHTML=rems.map(r=>`<article class="reminder-item"><strong>${esc(r.stage)} · ${formatReminder(r.reminderAt)}</strong><span>${esc(r.note||'需跟进')}</span></article>`).join('');}
+  const fs=document.querySelector('#followSummary');if(!fs)return;
+  const open=(t.issues||[]).filter(i=>i.status!=='已解决');const p=(t.contacts||[])[0];
+  fs.innerHTML=`<div class="follow-grid"><article><strong>当前状态</strong><span>${esc(t.status||'进行中')} · ${t.blNo||'未填提单号'}</span></article><article><strong>交单期限</strong><span>${t.deadline||'未设置'}</span></article><article><strong>问题</strong><span>${open.length?open.length+'个未解决':'暂无'}</span></article><article><strong>联系人</strong><span>${p?`${p.role} ${p.name||''} ${p.phone||''}`:'暂无'}</span></article></div><div class="goods-strip"><span>${esc(t.customer||'未填客户')}</span><span>${esc(t.invoiceNo||'未填发票号')}</span><span>${esc(t.blType==='original'?'正本提单':t.blType==='telex'?'电放':'SEAWAY')}</span><span>${esc(t.cooType||'无产地证')}</span></div>`;
+}
+
+function renderIssues(t){
+  const open=(t.issues||[]).filter(i=>i.status!=='已解决').length;
+  document.querySelector('#issueCount').textContent=`${open} 个未解决`;
+  const il=document.querySelector('#issueList');if(!il)return;
+  if(!t.issues?.length){il.innerHTML='<div class="issue-item"><p>暂无问题记录</p></div>';return;}
+  const tpl=document.querySelector('#issueTemplate');il.innerHTML='';
+  t.issues.slice().sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt)).forEach(i=>{
+    const n=tpl.content.firstElementChild.cloneNode(true);n.classList.toggle('resolved',i.status==='已解决');
+    const s=n.querySelector('.severity');s.textContent=`${i.category||'单证'} · ${i.severity} · ${i.status}`;s.classList.add(i.severity);
+    n.querySelector('p').textContent=i.text;n.querySelector('small').textContent=`创建 ${fmt(i.createdAt)} · 更新 ${fmt(i.updatedAt)}`;
+    n.querySelector('.close-issue').addEventListener('click',()=>toggleIssue(i.id));
+    n.querySelector('.delete-issue').addEventListener('click',()=>deleteIssue(i.id));
+    il.appendChild(n);
+  });
+}
+function addIssue(e){e.preventDefault();const t=selected();if(!t)return;const tx=document.querySelector('#issueText').value.trim();if(!tx)return;const ca=now();t.issues.push({id:uid(),text:tx,severity:document.querySelector('#issueSeverity').value,category:'单证',status:'未解决',createdAt:ca,updatedAt:ca});t.updatedAt=ca;save();document.querySelector('#issueText').value='';renderAll();}
+function toggleIssue(id){const t=selected();const i=t?.issues?.find(x=>x.id===id);if(!i)return;i.status=i.status==='已解决'?'未解决':'已解决';i.updatedAt=now();t.updatedAt=now();save();renderAll();}
+function deleteIssue(id){const t=selected();if(!t)return;t.issues=t.issues.filter(x=>x.id!==id);t.updatedAt=now();save();renderAll();}
+
+function renderContacts(t){
+  const cs=t.contacts||[];document.querySelector('#contactCount').textContent=cs.length?`${cs.length} 个`:'无';
+  const cl=document.querySelector('#contactList');if(!cl)return;
+  if(!cs.length){cl.innerHTML='<div class="contact-item"><p>暂无联系方式</p></div>';return;}
+  cl.innerHTML=cs.map(c=>`<article class="contact-item"><div><strong>${esc(c.role||'其他')}${c.name?` · ${esc(c.name)}`:''}</strong><p>📞 ${esc(c.phone||'未填')} ✉ ${esc(c.email||'未填')}</p></div><div class="contact-actions"><button class="ghost" onclick="deleteContact('${c.id}')">×</button></div></article>`).join('');
+}
+function addContact(e){e.preventDefault();const t=selected();if(!t)return;const ph=document.querySelector('#contactPhone').value.trim();const em=document.querySelector('#contactEmail').value.trim();if(!ph&&!em){alert('请至少填写电话或邮箱');return;}const ca=now();t.contacts.push({id:uid(),role:document.querySelector('#contactRole').value,name:document.querySelector('#contactNote').value.trim(),phone:ph,email:em,createdAt:ca,updatedAt:ca});t.updatedAt=ca;save();document.querySelector('#contactNote').value='';document.querySelector('#contactPhone').value='';document.querySelector('#contactEmail').value='';renderAll();}
+function deleteContact(id){const t=selected();if(!t)return;t.contacts=t.contacts.filter(x=>x.id!==id);t.updatedAt=now();save();renderAll();}
+
+function renderActivities(t){
+  const a=t.activities||[];document.querySelector('#activityCount').textContent=`${a.length} 条`;
+  document.querySelector('#activityList').innerHTML=a.length?a.slice().reverse().map(x=>`<article class="activity-item"><p>${esc(x.text)}</p><small>${fmt(x.createdAt)}</small></article>`).join(''):'<div class="activity-item"><p>暂无记录</p></div>';
+}
+
+function addTask(){
+  const ca=now();const t=initTask({id:uid(),ref:`DOC-${new Date().getFullYear()}-${String(state.tasks.length+1).padStart(3,'0')}`,createdAt:ca,updatedAt:ca});
+  t.activities.push({id:uid(),text:'新建单证任务',createdAt:ca});state.tasks.unshift(t);state.selectedId=t.id;save();renderAll();document.querySelector('#fRef')?.focus();
+}
+function saveTask(e){e.preventDefault();const t=selected();if(!t)return;const g=id=>document.querySelector(id)?.value||'';Object.assign(t,{ref:g('#fRef'),status:g('#fStatus'),customer:g('#fCustomer'),product:g('#fProduct'),invoiceNo:g('#fInvoiceNo'),invoiceAmt:g('#fInvoiceAmt'),blNo:g('#fBlNo'),blType:g('#fBlType'),lcNo:g('#fLcNo'),lcExpiry:g('#fLcExpiry'),bank:g('#fBank'),deadline:g('#fDeadline'),notes:g('#fNotes'),updatedAt:now()});t.activities.push({id:uid(),text:'更新单证任务信息',createdAt:now()});save();renderAll();document.querySelector('#saveHint').textContent=`已保存 ${nowText()}`;setTimeout(()=>document.querySelector('#saveHint').textContent='',2200);}
+
+function saveDocInfo(){
+  const t=selected();if(!t)return;const g=id=>document.querySelector(id)?.value||'';
+  Object.assign(t,{cooType:g('#fCooType'),cooNo:g('#fCooNo'),insurance:g('#fInsurance'),insuranceDetail:g('#fInsuranceDetail'),inspectionType:g('#fInspectionType'),inspectionNo:g('#fInspectionNo'),fumigation:g('#fFumigation'),weightCert:g('#fWeightCert'),carrierCert:g('#fCarrierCert'),carrierCertNo:g('#fCarrierCertNo'),embassyCert:g('#fEmbassyCert'),embassyCountry:g('#fEmbassyCountry'),declNo:g('#fDeclNo'),verifyNo:g('#fVerifyNo'),draft:g('#fDraft'),courierNo:g('#fCourierNo'),docNotes:g('#fDocNotes'),updatedAt:now()});
+  t.activities.push({id:uid(),text:'更新单证详细信息',createdAt:now()});save();renderAll();
+  document.querySelector('#docSaveHint').textContent=`已保存 ${nowText()}`;setTimeout(()=>document.querySelector('#docSaveHint').textContent='',2200);
+}
+
+function renderDocChecklist(t){
+  const prog=document.querySelector('#docCheckProgress');
+  const checked=Object.values(t.docChecklist||{}).filter(v=>v.checked).length;
+  if(prog) prog.textContent=`${checked}/${DOC_CHECKLIST.length} 已确认`;
+  const grid=document.querySelector('#docCheckGrid');if(!grid)return;
+  grid.innerHTML=DOC_CHECKLIST.map(d=>{
+    const c=(t.docChecklist||{})[d.id]||{checked:false};
+    return`<div class="doc-check-item"><input type="checkbox" ${c.checked?'checked':''} onchange="toggleDocCheck('${d.id}')" /><span class="doc-label">${c.checked?'<s style="color:var(--muted);">'+esc(d.name)+'</s>':esc(d.name)}</span><span class="doc-badge ${c.checked?'ok':'wait'}">${c.checked?'✅ 已确认':'待确认'}</span></div>`;
+  }).join('');
+}
+
+function toggleDocCheck(id){const t=selected();if(!t)return;t.docChecklist[id].checked=!t.docChecklist[id].checked;t.updatedAt=now();save();renderDocChecklist(t);}
+function deleteTask(){const t=selected();if(!t)return;if(!confirm(`确定删除 ${t.ref||'未填'}？`))return;state.tasks=state.tasks.filter(x=>x.id!==t.id);state.selectedId=state.tasks[0]?.id||null;save();renderAll();}
+
+function saveNode(){
+  const t=selected();if(!t||!state.selectedNode)return;
+  const st=t.steps[state.selectedNode];st.note=document.querySelector('#nodeNoteText').value.trim();
+  const m=document.querySelector('#nodeReminderMonth').value,d=document.querySelector('#nodeReminderDay').value;
+  const h=document.querySelector('#nodeReminderHour').value||'09',min=document.querySelector('#nodeReminderMinute').value||'00';
+  if(m&&d){const y=new Date().getFullYear();st.date=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}T${h}:${min}`;}
+  if(st.status==='pending')st.status='done';st.updatedAt=now();t.updatedAt=now();
+  t.activities.push({id:uid(),text:`更新步骤：${STEPS.find(x=>x.id===state.selectedNode)?.name||''} → ${st.status==='done'?'已完成':'已备注'}`,createdAt:now()});
+  save();state.selectedNode=null;document.querySelector('#nodeEditor').style.display='none';renderAll();
+}
+function clearNodeReminder(){const t=selected();if(!t||!state.selectedNode)return;t.steps[state.selectedNode].date='';t.steps[state.selectedNode].updatedAt=now();t.updatedAt=now();save();renderAll();}
+function exportData(){const b=new Blob([JSON.stringify(state.tasks,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`单证操作-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(a.href);}
+function importData(e){const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d))throw new Error('格式错误');state.tasks=d;d.forEach(initTask);state.selectedId=state.tasks[0]?.id||null;save();renderAll();}catch(ex){alert('导入失败：'+ex.message);}};r.readAsText(f);e.target.value='';}
+
+function bind(){
+  document.querySelector('#newBtn')?.addEventListener('click',addTask);document.querySelector('#emptyNewBtn')?.addEventListener('click',addTask);
+  document.querySelector('#deleteBtn')?.addEventListener('click',deleteTask);document.querySelector('#taskForm')?.addEventListener('submit',saveTask);
+  document.querySelector('#issueForm')?.addEventListener('submit',addIssue);document.querySelector('#contactForm')?.addEventListener('submit',addContact);
+  document.querySelector('#saveNodeNoteBtn')?.addEventListener('click',saveNode);document.querySelector('#clearNodeReminderBtn')?.addEventListener('click',clearNodeReminder);
+  document.querySelector('#saveDocInfoBtn')?.addEventListener('click',saveDocInfo);
+  document.querySelector('#searchInput')?.addEventListener('input',renderList);document.querySelector('#statusFilter')?.addEventListener('change',renderList);
+  document.querySelector('#exportBtn')?.addEventListener('click',exportData);document.querySelector('#importInput')?.addEventListener('change',importData);
+}
+
+populateSelects();load();bind();renderAll();

@@ -1,0 +1,10 @@
+{
+  "name": "foreign-trade-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "lock": "node scripts/crypto.js lock",
+    "unlock": "node scripts/crypto.js unlock",
+    "build": "node scripts/build.js"
+  }
+}

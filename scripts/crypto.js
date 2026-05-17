@@ -4,6 +4,7 @@ const path = require("path");
 const readline = require("readline");
 
 const ROOT = path.resolve(__dirname, "..");
+const KEY_FILE = path.join(ROOT, ".crypto-key");
 const FILES = ["app.js", "styles.css"];
 
 function ask(question) {
@@ -13,6 +14,17 @@ function ask(question) {
 
 function deriveKey(password, salt) {
   return crypto.scryptSync(password, salt, 32);
+}
+
+function getPassword() {
+  if (fs.existsSync(KEY_FILE)) {
+    return fs.readFileSync(KEY_FILE, "utf-8").trim();
+  }
+  return null;
+}
+
+function savePassword(password) {
+  fs.writeFileSync(KEY_FILE, password, { mode: 0o600 });
 }
 
 function encryptFile(filePath, password) {
@@ -50,18 +62,24 @@ function decryptFile(encPath, password) {
 
 function secureDelete(filePath) {
   const stats = fs.statSync(filePath);
-  const size = stats.size;
   const fd = fs.openSync(filePath, "w");
-  fs.writeSync(fd, crypto.randomBytes(size));
+  fs.writeSync(fd, crypto.randomBytes(stats.size));
   fs.closeSync(fd);
   fs.unlinkSync(filePath);
 }
 
 async function lock() {
-  const pwd = await ask("设置口令: ");
-  if (!pwd) { console.log("口令不能为空"); return; }
-  const confirm = await ask("确认口令: ");
-  if (pwd !== confirm) { console.log("两次口令不一致"); return; }
+  let pwd = getPassword();
+  if (pwd) {
+    console.log("[本机信任] 已记住口令，无需输入");
+  } else {
+    pwd = await ask("设置口令: ");
+    if (!pwd) { console.log("口令不能为空"); return; }
+    const confirm = await ask("确认口令: ");
+    if (pwd !== confirm) { console.log("两次口令不一致"); return; }
+    savePassword(pwd);
+    console.log("[本机已信任] 以后无需再次输入口令");
+  }
 
   for (const f of FILES) {
     const src = path.join(ROOT, f);
@@ -74,8 +92,13 @@ async function lock() {
 }
 
 async function unlock() {
-  const pwd = await ask("输入口令: ");
-  if (!pwd) { console.log("口令不能为空"); return; }
+  let pwd = getPassword();
+  if (pwd) {
+    console.log("[本机信任] 已记住口令，自动解密...");
+  } else {
+    pwd = await ask("输入口令: ");
+    if (!pwd) { console.log("口令不能为空"); return; }
+  }
 
   for (const f of FILES) {
     const enc = path.join(ROOT, f + ".enc");
@@ -87,6 +110,11 @@ async function unlock() {
       console.log(`解密 ${f}.enc 失败：口令错误`);
       return;
     }
+  }
+
+  if (!getPassword()) {
+    savePassword(pwd);
+    console.log("[本机已信任] 以后无需再次输入口令");
   }
   console.log("\n源码已解锁，可以编辑。完成后请运行 npm run lock。");
 }

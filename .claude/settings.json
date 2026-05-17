@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(npm *)",
+      "Bash(git *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(echo *)",
+      "Bash(mkdir *)",
+      "Bash(wc *)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(which *)",
+      "Bash(pwd *)",
+      "Bash(file *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(sort *)",
+      "Bash(uniq *)",
+      "Bash(date *)",
+      "Bash(env *)",
+      "Bash(ps *)",
+      "Bash(df *)",
+      "Bash(du *)"
+    ]
+  }
+}

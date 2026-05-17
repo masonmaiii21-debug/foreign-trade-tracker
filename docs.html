@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>单证操作管理</title>
+<link rel="stylesheet" href="./styles.min.css?v=3" />
+<style>
+:root {
+  --ship-primary: #7b3fa3;
+  --ship-primary-dark: #5e2d7e;
+}
+.brand-mark { background: var(--ship-primary) !important; }
+.sidebar { background: #1f0d2e !important; }
+.sidebar .order-item.active, .sidebar .order-item:hover { background: rgba(123,63,163,0.45) !important; }
+.sidebar .brand p, .sidebar .order-item small, .sidebar .order-meta { color: #c9a8e0 !important; }
+.sidebar .metric span { color: #c9a8e0 !important; }
+.primary { border-color: var(--ship-primary) !important; background: var(--ship-primary) !important; }
+.primary:hover { background: var(--ship-primary-dark) !important; }
+input:focus, select:focus, textarea:focus { border-color: var(--ship-primary) !important; box-shadow: 0 0 0 3px rgba(123,63,163,0.12) !important; }
+.chain-node.done .node-dot, .chain-node.current .node-dot, .chain-node.checked .node-dot { background: var(--ship-primary) !important; }
+.chain-node.current { border-color: var(--ship-primary) !important; box-shadow: 0 0 0 3px rgba(123,63,163,0.15) !important; }
+.chain-node.done { border-color: rgba(123,63,163,0.42) !important; background: #f5eef8 !important; }
+.eyebrow { color: var(--ship-primary) !important; }
+#saveHint { color: var(--ship-primary) !important; }
+.node-badge { color: var(--ship-primary-dark) !important; }
+.follow-grid strong { color: var(--ship-primary-dark) !important; }
+.milestone-bar { display: flex; gap: 0; margin-bottom: 12px; border-radius: 8px; overflow: hidden; height: 8px; background: var(--surface-soft); }
+.milestone-done { background: var(--ship-primary); height: 100%; transition: width 0.3s; }
+.doc-priority { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; padding: 2px 7px; border-radius: 99px; font-weight: 600; }
+.doc-priority.urgent { background: #ffe8e8; color: var(--danger); }
+.doc-priority.important { background: #fff2d8; color: var(--warning); }
+.doc-priority.normal { background: #e6f7ee; color: #1f8c5c; }
+.chain-link { display: inline-block; font-size: 11px; color: var(--muted); margin-left: 4px; }
+.doc-check-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.doc-check-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: #fbfdfc; }
+.doc-check-item input[type=checkbox] { width: 18px; height: 18px; min-height: 0; accent-color: var(--ship-primary); cursor: pointer; }
+.doc-check-item .doc-label { font-size: 13px; }
+.doc-check-item .doc-badge { font-size: 9px; padding: 2px 6px; border-radius: 99px; margin-left: auto; white-space: nowrap; }
+.doc-check-item .doc-badge.ok { background: #f0e6f7; color: var(--ship-primary); }
+.doc-check-item .doc-badge.wait { background: #fff2d8; color: var(--warning); }
+@media (max-width:1100px) { .doc-check-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">证</div>
+      <div><h1>单证操作</h1><p>制单 → 审单 → 交单 全流程</p></div>
+    </div>
+    <div class="metrics" id="metrics"></div>
+    <div class="toolbar">
+      <button class="primary" id="newBtn" type="button">+ 新建单证任务</button>
+      <button class="ghost" id="exportBtn" type="button" title="导出数据">⇩</button>
+      <label class="ghost file-action" title="导入数据">⇧<input id="importInput" type="file" accept="application/json" /></label>
+    </div>
+    <div class="filters">
+      <input id="searchInput" type="search" placeholder="搜索订单号、客户、提单号" />
+      <select id="statusFilter"><option value="">全部状态</option></select>
+    </div>
+    <div class="order-list" id="docList"></div>
+  </aside>
+
+  <section class="workspace">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">工作台</p>
+        <h2 id="pageTitle">选择或新建单证任务</h2>
+      </div>
+      <button class="danger ghost hidden" id="deleteBtn" type="button">删除任务</button>
+    </header>
+
+    <section class="panel empty-state" id="emptyState">
+      <div><h2>开始制作第一份单证</h2><p>跟踪每一票货物的全套单证：发票、箱单、提单、产地证、保险单、银行交单。</p><button class="primary" id="emptyNewBtn" type="button">新建单证任务</button></div>
+    </section>
+
+    <section class="content-grid hidden" id="editorArea">
+      <!-- Progress Chain -->
+      <section class="panel flow-panel">
+        <div class="section-title"><h3>单证操作流程</h3><span id="stepProgress"></span></div>
+        <div class="milestone-bar"><div class="milestone-done" id="milestoneDone" style="width:0%"></div></div>
+        <div class="progress-chain" id="progressChain"></div>
+        <div class="node-editor" id="nodeEditor">
+          <div><strong id="nodeNoteTitle">步骤备注</strong><p id="nodeNoteMeta"></p></div>
+          <label>操作备注<textarea id="nodeNoteText" rows="3" placeholder="记录该步骤的单证详情、问题、客户要求等"></textarea></label>
+          <div class="alarm-picker">
+            <label>月<select id="nodeReminderMonth"></select></label><label>日<select id="nodeReminderDay"></select></label>
+            <label>时<select id="nodeReminderHour"></select></label><label>分<select id="nodeReminderMinute"></select></label>
+          </div>
+          <div class="node-actions"><button class="secondary" id="clearNodeReminderBtn" type="button">清除提醒</button><button class="primary" id="saveNodeNoteBtn" type="button">保存步骤</button></div>
+        </div>
+      </section>
+
+      <!-- Reminders + Summary -->
+      <section class="panel reminder-panel">
+        <div class="section-title"><h3>提醒</h3><span id="reminderCount"></span></div>
+        <div class="reminder-list" id="reminderList"></div>
+        <div class="follow-summary" id="followSummary"></div>
+      </section>
+
+      <!-- Task Form - Basic Info -->
+      <form class="panel order-form" id="taskForm">
+        <div class="section-title"><h3>单证任务信息</h3><span id="lastUpdated"></span></div>
+        <div class="form-grid">
+          <label>订单号/合同号<input id="fRef" required autocomplete="off" placeholder="例如 PI-2026-001" /></label>
+          <label>状态<select id="fStatus"></select></label>
+          <label>客户<input id="fCustomer" autocomplete="off" placeholder="客户/公司名称" /></label>
+          <label>产品/品名<input id="fProduct" autocomplete="off" placeholder="中英文品名" /></label>
+          <label>发票号<input id="fInvoiceNo" autocomplete="off" placeholder="例如 INV-2026-001" /></label>
+          <label>发票金额<input id="fInvoiceAmt" autocomplete="off" placeholder="例如 USD 12,500" /></label>
+          <label>提单号<input id="fBlNo" autocomplete="off" placeholder="例如 BL-123456" /></label>
+          <label>提单类型<select id="fBlType"><option value="original">正本提单</option><option value="telex">电放 Telex Release</option><option value="seaway">海运单 Sea Waybill</option></select></label>
+          <label>信用证号 (L/C)<input id="fLcNo" autocomplete="off" placeholder="如为L/C结算" /></label>
+          <label>L/C有效期<input id="fLcExpiry" type="date" /></label>
+          <label>交单银行<input id="fBank" autocomplete="off" placeholder="例如 HSBC CN" /></label>
+          <label>交单期限<input id="fDeadline" type="date" /></label>
+          <label style="grid-column:span 2;">备注<textarea id="fNotes" rows="2" placeholder="客户特殊单证要求、信用证条款注意事项等"></textarea></label>
+        </div>
+        <div class="form-actions"><button class="primary" type="submit">保存修改</button><span id="saveHint"></span></div>
+      </form>
+
+      <!-- Document Info Panel -->
+      <section class="panel" style="padding:20px;">
+        <div class="section-title"><h3>单证详细信息</h3><span>各类型单证的具体编号和状态</span></div>
+        <div class="form-grid" style="grid-template-columns:repeat(2,1fr);">
+          <label>产地证类型<select id="fCooType"><option value="">无需产地证</option><option value="CO">一般原产地证 CO</option><option value="FORM A">FORM A 普惠制产地证</option><option value="FORM B">FORM B 亚太产地证</option><option value="FORM E">FORM E 中国-东盟</option><option value="FORM F">FORM F 中国-智利</option><option value="FORM P">FORM P 中国-巴基斯坦</option><option value="FORM R">FORM R 中国-秘鲁</option><option value="RCEP">RCEP 原产地证</option></select></label>
+          <label>产地证编号<input id="fCooNo" autocomplete="off" placeholder="产地证证书编号" /></label>
+          <label>保险单号<input id="fInsurance" autocomplete="off" placeholder="保险单号 / 保险公司" /></label>
+          <label>保险金额/险别<input id="fInsuranceDetail" autocomplete="off" placeholder="例如 110%发票金额 / 一切险" /></label>
+          <label>检验证书类型<select id="fInspectionType"><option value="">无需检验</option><option value="SGS">SGS 检验证书</option><option value="BV">BV 必维检验证书</option><option value="CCIC">CCIC 中检证书</option><option value="CIQ">CIQ 出入境检验检疫</option><option value="Other">其他第三方检验</option></select></label>
+          <label>检验证书编号<input id="fInspectionNo" autocomplete="off" placeholder="检验证书编号" /></label>
+          <label>熏蒸/植检证书<input id="fFumigation" autocomplete="off" placeholder="熏蒸证书编号 (木质包装)" /></label>
+          <label>重量证书<input id="fWeightCert" autocomplete="off" placeholder="重量证书编号 (SGS/BV)" /></label>
+          <label>船公司证明<select id="fCarrierCert"><option value="">无需</option><option value="age">船龄证明</option><option value="flag">船籍证明</option><option value="blacklist">黑名单证明</option><option value="israel">非以色列船舶证明</option></select></label>
+          <label>证明编号/日期<input id="fCarrierCertNo" autocomplete="off" placeholder="船公司证明编号或日期" /></label>
+          <label>使馆认证类型<select id="fEmbassyCert"><option value="">无需认证</option><option value="invoice">发票认证</option><option value="coo">产地证认证</option><option value="both">发票+产地证认证</option></select></label>
+          <label>认证国家/使馆<input id="fEmbassyCountry" autocomplete="off" placeholder="例如 埃及/阿根廷/沙特" /></label>
+          <label>报关单号<input id="fDeclNo" autocomplete="off" placeholder="海关报关单号" /></label>
+          <label>核销单号<input id="fVerifyNo" autocomplete="off" placeholder="外汇核销单号" /></label>
+          <label>汇票编号/金额<input id="fDraft" autocomplete="off" placeholder="汇票号 / 金额" /></label>
+          <label>快递单号<input id="fCourierNo" autocomplete="off" placeholder="寄送正本文件的快递号" /></label>
+          <label style="grid-column:span 2;">特殊单证备注<textarea id="fDocNotes" rows="2" placeholder="客户额外要求的特殊单证、格式要求等"></textarea></label>
+        </div>
+        <div class="form-actions"><button class="primary" id="saveDocInfoBtn" type="button">保存单证信息</button><span id="docSaveHint" style="color:var(--ship-primary);font-size:13px;"></span></div>
+      </section>
+
+      <!-- Document Checklist -->
+      <section class="panel" style="padding:20px;">
+        <div class="section-title"><h3>单证清单核对</h3><span id="docCheckProgress"></span></div>
+        <div class="doc-check-grid" id="docCheckGrid"></div>
+      </section>
+
+      <!-- Issues -->
+      <section class="panel issue-panel">
+        <div class="section-title"><h3>问题记录</h3><span id="issueCount"></span></div>
+        <form class="issue-form" id="issueForm"><textarea id="issueText" rows="3" placeholder="记录单证不符、数据错误、客户修改要求等问题"></textarea><div class="issue-controls"><select id="issueSeverity"><option value="一般">一般</option><option value="重要">重要</option><option value="紧急">紧急</option></select><button class="secondary" type="submit">添加问题</button></div></form>
+        <div class="issue-list" id="issueList"></div>
+      </section>
+
+      <!-- Contacts -->
+      <section class="panel contact-panel">
+        <div class="section-title"><h3>联系方式</h3><span id="contactCount"></span></div>
+        <form class="contact-form" id="contactForm"><div class="contact-grid">
+          <label>类型<select id="contactRole"><option value="客户">客户</option><option value="货代">货代</option><option value="船公司">船公司</option><option value="报关行">报关行</option><option value="银行">银行</option><option value="商会/贸促会">商会/贸促会</option><option value="保险公司">保险公司</option><option value="检验机构">检验机构</option><option value="其他">其他</option></select></label>
+          <label>姓名/备注<input id="contactNote" autocomplete="off" placeholder="联系人姓名和备注" /></label>
+          <label>电话<input id="contactPhone" autocomplete="off" inputmode="tel" placeholder="例如 13800000000" /></label>
+          <label>邮箱<input id="contactEmail" autocomplete="off" inputmode="email" placeholder="name@example.com" /></label>
+        </div><button class="secondary" type="submit">添加联系人</button></form>
+        <div class="contact-list" id="contactList"></div>
+      </section>
+
+      <!-- Activity Log -->
+      <section class="panel activity-panel"><div class="section-title"><h3>更新记录</h3><span id="activityCount"></span></div><div class="activity-list" id="activityList"></div></section>
+    </section>
+  </section>
+</main>
+
+<template id="itemTemplate">
+  <button class="order-item" type="button"><span class="order-main"><strong></strong><small></small><span style="font-size:10px;margin-top:2px;display:flex;gap:8px;"></span></span><span class="order-meta"></span></button>
+</template>
+<template id="issueTemplate">
+  <article class="issue-item"><div><span class="severity"></span><p></p><small></small></div><div class="issue-actions"><button class="ghost close-issue" type="button" title="解决/重开">✓</button><button class="ghost delete-issue" type="button" title="删除问题">×</button></div></article>
+</template>
+
+<script src="./docs.min.js?v=3"></script>
+
+</body>
+</html>

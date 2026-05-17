@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>报关操作管理</title>
+<link rel="stylesheet" href="./styles.min.css?v=3" />
+<style>
+:root {
+  --cs-primary: #c0392b;
+  --cs-primary-dark: #922b21;
+}
+.brand-mark { background: var(--cs-primary) !important; }
+.sidebar { background: #2b0d0a !important; }
+.sidebar .order-item.active, .sidebar .order-item:hover { background: rgba(192,57,43,0.45) !important; }
+.sidebar .brand p, .sidebar .order-item small, .sidebar .order-meta { color: #e0b0a8 !important; }
+.sidebar .metric span { color: #e0b0a8 !important; }
+.primary { border-color: var(--cs-primary) !important; background: var(--cs-primary) !important; }
+.primary:hover { background: var(--cs-primary-dark) !important; }
+input:focus, select:focus, textarea:focus { border-color: var(--cs-primary) !important; box-shadow: 0 0 0 3px rgba(192,57,43,0.12) !important; }
+.chain-node.done .node-dot, .chain-node.current .node-dot, .chain-node.checked .node-dot { background: var(--cs-primary) !important; }
+.chain-node.current { border-color: var(--cs-primary) !important; box-shadow: 0 0 0 3px rgba(192,57,43,0.15) !important; }
+.chain-node.done { border-color: rgba(192,57,43,0.42) !important; background: #fef5f3 !important; }
+.eyebrow { color: var(--cs-primary) !important; }
+#saveHint { color: var(--cs-primary) !important; }
+.node-badge { color: var(--cs-primary-dark) !important; }
+.follow-grid strong { color: var(--cs-primary-dark) !important; }
+.milestone-bar { display: flex; gap: 0; margin-bottom: 12px; border-radius: 8px; overflow: hidden; height: 8px; background: var(--surface-soft); }
+.milestone-done { background: var(--cs-primary); height: 100%; transition: width 0.3s; }
+.milestone-problem { background: var(--danger); height: 100%; transition: width 0.3s; }
+.table-mini { width: 100%; border-collapse: collapse; font-size: 12px; }
+.table-mini th { background: var(--surface-soft); padding: 6px 8px; text-align: left; font-size: 11px; color: var(--muted); border-bottom: 1px solid var(--line); }
+.table-mini td { padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.table-mini .num { text-align: right; font-variant-numeric: tabular-nums; }
+.table-mini tfoot td { font-weight: 700; color: var(--accent); border-top: 2px solid var(--line); }
+.table-mini input { min-height: 26px; font-size: 11px; padding: 3px 5px; background: transparent; border: none; color: var(--text); width: 100%; }
+.table-mini input:focus { outline: none; }
+.doc-check-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.doc-check-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: #fbfdfc; }
+.doc-check-item input[type=checkbox] { width: 18px; height: 18px; min-height: 0; accent-color: var(--cs-primary); cursor: pointer; }
+.doc-check-item .doc-label { font-size: 12px; flex: 1; }
+.doc-check-item .doc-badge { font-size: 9px; padding: 2px 6px; border-radius: 99px; white-space: nowrap; }
+.doc-check-item .doc-badge.ok { background: #fef0ed; color: var(--cs-primary); }
+.doc-check-item .doc-badge.wait { background: #fff2d8; color: var(--warning); }
+@media (max-width:1100px) { .doc-check-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">关</div>
+      <div><h1>报关操作</h1><p>申报 → 审单 → 查验 → 放行</p></div>
+    </div>
+    <div class="metrics" id="metrics"></div>
+    <div class="toolbar">
+      <button class="primary" id="newBtn" type="button">+ 新建报关单</button>
+      <button class="ghost" id="exportBtn" type="button" title="导出数据">⇩</button>
+      <label class="ghost file-action" title="导入数据">⇧<input id="importInput" type="file" accept="application/json" /></label>
+    </div>
+    <div class="filters">
+      <input id="searchInput" type="search" placeholder="搜索报关单号、客户、HS编码" />
+      <select id="statusFilter"><option value="">全部状态</option></select>
+    </div>
+    <div class="order-list" id="customsList"></div>
+  </aside>
+
+  <section class="workspace">
+    <header class="topbar">
+      <div><p class="eyebrow">工作台</p><h2 id="pageTitle">选择或新建报关单</h2></div>
+      <button class="danger ghost hidden" id="deleteBtn" type="button">删除报关单</button>
+    </header>
+
+    <section class="panel empty-state" id="emptyState">
+      <div><h2>开始申报第一票</h2><p>跟踪出口报关全流程：资料准备、HS归类、电子申报、海关审单、查验配合、缴税放行、退税申报。</p><button class="primary" id="emptyNewBtn" type="button">新建报关单</button></div>
+    </section>
+
+    <section class="content-grid hidden" id="editorArea">
+      <!-- Process Chain -->
+      <section class="panel flow-panel">
+        <div class="section-title"><h3>报关操作流程</h3><span id="stepProgress"></span></div>
+        <div class="milestone-bar"><div class="milestone-done" id="milestoneDone" style="width:0%"></div><div class="milestone-problem" id="milestoneProblem" style="width:0%"></div></div>
+        <div class="progress-chain" id="progressChain"></div>
+        <div class="node-editor" id="nodeEditor">
+          <div><strong id="nodeNoteTitle">步骤备注</strong><p id="nodeNoteMeta"></p></div>
+          <label>操作备注<textarea id="nodeNoteText" rows="3" placeholder="记录该步骤具体情况、海关反馈、异常处理等"></textarea></label>
+          <div class="alarm-picker">
+            <label>月<select id="nodeReminderMonth"></select></label><label>日<select id="nodeReminderDay"></select></label>
+            <label>时<select id="nodeReminderHour"></select></label><label>分<select id="nodeReminderMinute"></select></label>
+          </div>
+          <div class="node-actions"><button class="secondary" id="clearNodeReminderBtn" type="button">清除提醒</button><button class="primary" id="saveNodeNoteBtn" type="button">保存步骤</button></div>
+        </div>
+      </section>
+
+      <!-- Reminders + Summary -->
+      <section class="panel reminder-panel">
+        <div class="section-title"><h3>提醒</h3><span id="reminderCount"></span></div>
+        <div class="reminder-list" id="reminderList"></div>
+        <div class="follow-summary" id="followSummary"></div>
+      </section>
+
+      <!-- Customs Form -->
+      <form class="panel order-form" id="customsForm">
+        <div class="section-title"><h3>报关基本信息</h3><span id="lastUpdated"></span></div>
+        <div class="form-grid">
+          <label>报关单号<input id="fRef" required autocomplete="off" placeholder="海关报关单号 / 预录入号" /></label>
+          <label>状态<select id="fStatus"></select></label>
+          <label>关联订单号<input id="fOrderNo" autocomplete="off" placeholder="对应的外贸订单号" /></label>
+          <label>客户<input id="fCustomer" autocomplete="off" placeholder="客户/公司名称" /></label>
+          <label>出口口岸<select id="fPort"><option value="">选择口岸</option><option value="深圳海关">深圳海关</option><option value="上海海关">上海海关</option><option value="宁波海关">宁波海关</option><option value="广州海关">广州海关</option><option value="天津海关">天津海关</option><option value="青岛海关">青岛海关</option><option value="厦门海关">厦门海关</option><option value="大连海关">大连海关</option><option value="南京海关">南京海关</option><option value="黄埔海关">黄埔海关</option><option value="重庆海关">重庆海关</option><option value="其他">其他口岸</option></select></label>
+          <label>运输方式<select id="fTransport"><option value="水路运输">水路运输</option><option value="航空运输">航空运输</option><option value="铁路运输">铁路运输</option><option value="公路运输">公路运输</option></select></label>
+          <label>贸易方式<select id="fTradeMode"><option value="一般贸易">一般贸易 (0110)</option><option value="进料加工">进料加工 (0615)</option><option value="来料加工">来料加工 (0214)</option><option value="保税监管">保税监管 (1200)</option><option value="退运货物">退运货物</option><option value="其他">其他</option></select></label>
+          <label>征免性质<select id="fExemption"><option value="一般征税">一般征税</option><option value="来料加工">来料加工</option><option value="进料加工">进料加工</option><option value="中外合资">中外合资</option><option value="外资企业">外资企业</option></select></label>
+          <label>成交方式<select id="fDealMode"><option value="FOB">FOB</option><option value="CIF">CIF</option><option value="C&F">C&F (CNF)</option><option value="EXW">EXW</option></select></label>
+          <label>结汇方式<select id="fSettlement"><option value="电汇">电汇 T/T</option><option value="信用证">信用证 L/C</option><option value="托收">托收 D/P D/A</option><option value="其他">其他</option></select></label>
+          <label>报关行<input id="fBroker" autocomplete="off" placeholder="报关行/报关员名称" /></label>
+          <label>申报日期<input id="fDeclDate" type="date" /></label>
+          <label>预计放行日<input id="fReleaseDate" type="date" /></label>
+          <label style="grid-column:span 2;">备注<textarea id="fNotes" rows="2" placeholder="特殊报关要求、海关注意事项等"></textarea></label>
+        </div>
+        <div class="form-actions"><button class="primary" type="submit">保存修改</button><span id="saveHint"></span></div>
+      </form>
+
+      <!-- Goods & HS Info -->
+      <section class="panel" style="padding:20px;">
+        <div class="section-title"><h3>商品申报信息</h3><span>申报要素、HS编码、税款明细</span></div>
+        <div class="form-grid">
+          <label>品名 (中文)<input id="fCargoCN" autocomplete="off" placeholder="中文品名" /></label>
+          <label>品名 (英文)<input id="fCargoEN" autocomplete="off" placeholder="英文品名" /></label>
+          <label>HS编码<input id="fHsCode" autocomplete="off" placeholder="例如 9403609990" /></label>
+          <label>法定单位<select id="fUnit"><option value="个">个</option><option value="千克">千克</option><option value="套">套</option><option value="台">台</option><option value="件">件</option><option value="米">米</option><option value="平方米">平方米</option></select></label>
+          <label>申报数量<input id="fDeclQty" type="number" step="0.01" placeholder="按法定单位的数量" /></label>
+          <label>申报单价<input id="fDeclPrice" type="number" step="0.01" placeholder="按法定单位的单价" /></label>
+          <label>申报总价 (USD)<input id="fDeclTotal" type="number" step="0.01" placeholder="申报总金额" /></label>
+          <label>币制<select id="fCurrency"><option value="USD">USD 美元</option><option value="EUR">EUR 欧元</option><option value="JPY">JPY 日元</option><option value="CNY">CNY 人民币</option></select></label>
+          <label>毛重 (KGS)<input id="fGrossWt" type="number" step="0.1" placeholder="货物毛重" /></label>
+          <label>净重 (KGS)<input id="fNetWt" type="number" step="0.1" placeholder="货物净重" /></label>
+          <label>件数<input id="fPackages" type="number" placeholder="包装件数" /></label>
+          <label>包装种类<select id="fPackType"><option value="纸箱">纸箱 CTNS</option><option value="托盘">托盘 PLTS</option><option value="木箱">木箱</option><option value="桶装">桶装</option><option value="散装">散装</option></select></label>
+          <label>原产国<select id="fOrigin"><option value="中国">中国 CN</option><option value="越南">越南 VN</option><option value="印度">印度 IN</option><option value="其他">其他</option></select></label>
+          <label>最终目的国<select id="fDest"><option value="美国">美国 US</option><option value="德国">德国 DE</option><option value="日本">日本 JP</option><option value="英国">英国 GB</option><option value="韩国">韩国 KR</option><option value="其他">其他</option></select></label>
+          <label>出口退税率 (%)<input id="fTaxRate" type="number" step="0.1" placeholder="例如 13" /></label>
+          <label>监管条件<input id="fRegCondition" autocomplete="off" placeholder="例如 A/B/M" /></label>
+          <label style="grid-column:span 2;">申报要素<textarea id="fDeclElements" rows="3" placeholder="品牌类型|用途|材质|功能|原理|规格型号|其他"></textarea></label>
+        </div>
+        <div class="form-actions"><button class="primary" id="saveGoodsBtn" type="button">保存商品信息</button><span id="goodsSaveHint" style="color:var(--cs-primary);font-size:13px;"></span></div>
+      </section>
+
+      <!-- Tax & Fee -->
+      <section class="panel" style="padding:20px;">
+        <div class="section-title"><h3>税费明细</h3><button class="secondary small" id="addTaxBtn" type="button">+ 添加</button></div>
+        <table class="table-mini"><thead><tr><th>税费项目</th><th>税率%</th><th>计税金额</th><th>实缴金额(CNY)</th><th>缴纳日期</th><th></th></tr></thead><tbody id="taxBody"></tbody><tfoot id="taxFoot"></tfoot></table>
+      </section>
+
+      <!-- Required Docs Checklist -->
+      <section class="panel" style="padding:20px;">
+        <div class="section-title"><h3>报关所需单证核对</h3><span id="docCheckProgress"></span></div>
+        <div class="doc-check-grid" id="docCheckGrid"></div>
+      </section>
+
+      <!-- Issues -->
+      <section class="panel issue-panel">
+        <div class="section-title"><h3>问题记录</h3><span id="issueCount"></span></div>
+        <form class="issue-form" id="issueForm"><textarea id="issueText" rows="3" placeholder="记录海关退单、查验问题、申报错误、HS归类争议等"></textarea><div class="issue-controls"><select id="issueSeverity"><option value="一般">一般</option><option value="重要">重要</option><option value="紧急">紧急</option></select><button class="secondary" type="submit">添加问题</button></div></form>
+        <div class="issue-list" id="issueList"></div>
+      </section>
+
+      <!-- Contacts -->
+      <section class="panel contact-panel">
+        <div class="section-title"><h3>联系方式</h3><span id="contactCount"></span></div>
+        <form class="contact-form" id="contactForm"><div class="contact-grid">
+          <label>类型<select id="contactRole"><option value="报关行">报关行</option><option value="报关员">报关员</option><option value="海关">海关联系人</option><option value="货代">货代</option><option value="客户">客户</option><option value="财务">财务/退税专员</option><option value="其他">其他</option></select></label>
+          <label>姓名/备注<input id="contactNote" autocomplete="off" placeholder="联系人姓名和备注" /></label>
+          <label>电话<input id="contactPhone" autocomplete="off" inputmode="tel" placeholder="例如 13800000000" /></label>
+          <label>邮箱<input id="contactEmail" autocomplete="off" inputmode="email" placeholder="name@example.com" /></label>
+        </div><button class="secondary" type="submit">添加联系人</button></form>
+        <div class="contact-list" id="contactList"></div>
+      </section>
+
+      <!-- Activity Log -->
+      <section class="panel activity-panel"><div class="section-title"><h3>更新记录</h3><span id="activityCount"></span></div><div class="activity-list" id="activityList"></div></section>
+    </section>
+  </section>
+</main>
+
+<template id="itemTemplate">
+  <button class="order-item" type="button"><span class="order-main"><strong></strong><small></small><span style="font-size:10px;margin-top:2px;display:flex;gap:8px;"></span></span><span class="order-meta"></span></button>
+</template>
+<template id="issueTemplate">
+  <article class="issue-item"><div><span class="severity"></span><p></p><small></small></div><div class="issue-actions"><button class="ghost close-issue" type="button" title="解决/重开">✓</button><button class="ghost delete-issue" type="button" title="删除问题">×</button></div></article>
+</template>
+
+<script src="./customs.min.js?v=3"></script>
+
+</body>
+</html>
